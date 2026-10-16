@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#F8D4DF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="Un pequeño juego de cocina para hornear un pastel de cumpleaños paso a paso.">
+<title>Un pastel para ti</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='34' width='44' height='20' rx='6' fill='%23F9A8D4' stroke='%23D23A79' stroke-width='3'/%3E%3Crect x='18' y='20' width='28' height='16' rx='5' fill='%23F3CF7A' stroke='%23D9A441' stroke-width='3'/%3E%3Crect x='30' y='6' width='4' height='14' fill='%23F26FA3'/%3E%3Ccircle cx='32' cy='5' r='4' fill='%23F4A62A'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink-50:#FFF4F8; --pink-100:#FFE1EC; --pink-200:#FBC4D6; --pink-300:#F9A0C2; --pink-400:#F27BAA;
+    --pink-500:#EA5A95; --pink-600:#D23A79; --pink-700:#B02B62; --pink-800:#8F1F4E;
+    --plum:#5E3A4C; --brown:#7E3A2C; --brown-2:#A3563F;
+    --gold-100:#FFF0C2; --gold-300:#FFE08A; --gold-400:#F9C74F; --gold-500:#F4A62A; --gold-700:#C4761A; --gold-800:#A85F0E;
+    --cream:#FFF8EC;
+    --wood-1:#F7DCAE; --wood-2:#EFC586; --wood-3:#E3AC67; --wood-4:#C98B47; --wood-5:#9F6630;
+    --tile:#F9DCE5; --tile-2:#FCEAF0; --grout:#F1C3D1;
+    --font-head:'Fredoka','Nunito','Segoe UI',system-ui,sans-serif;
+    --font-body:'Nunito','Segoe UI',system-ui,sans-serif;
+    --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+    --bounce:cubic-bezier(.34,1.56,.64,1);
+    --z-ghost:30; --z-confetti:40; --z-overlay:50; --z-spark:60;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:var(--font-body);color:var(--brown);font-size:16px;line-height:1.45;background:#F4CBD8;
+    overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  }
+
+  /* ========== Cocina de fondo ========== */
+  .kitchen{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+  .wall{
+    position:absolute;left:0;right:0;top:0;height:60%;
+    background:
+      repeating-conic-gradient(from 0deg, rgba(255,255,255,.22) 0 25%, transparent 0 50%) 0 0/120px 120px,
+      linear-gradient(var(--grout) 3px, transparent 3px) 0 0/60px 60px,
+      linear-gradient(90deg, var(--grout) 3px, transparent 3px) 0 0/60px 60px,
+      linear-gradient(180deg, #FCE6ED 0%, #F9D8E2 100%);
+  }
+  .wall::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.35), transparent 60%)}
+  .counter{
+    position:absolute;left:0;right:0;bottom:0;height:40%;
+    background:
+      repeating-linear-gradient(180deg, rgba(150,90,30,.08) 0 2px, transparent 2px 15px),
+      repeating-linear-gradient(178deg, transparent 0 40px, rgba(255,255,255,.12) 40px 43px, transparent 43px 90px),
+      linear-gradient(180deg, var(--wood-1) 0%, var(--wood-2) 35%, var(--wood-3) 100%);
+    border-top:12px solid var(--wood-4);
+    box-shadow:inset 0 10px 0 var(--wood-1), 0 -6px 14px rgba(120,60,20,.18);
+  }
+  .counter::before{content:"";position:absolute;left:0;right:0;top:-12px;height:4px;background:rgba(255,255,255,.45)}
+  .prop{position:absolute}
+  .prop svg{display:block;width:100%;height:auto}
+  .prop.shelf{right:-4%;top:5%;width:46%}
+  .prop.jars{left:-4%;top:40%;width:26%}
+  .prop.pot{right:-5%;top:42%;width:21%}
+  .prop.towel{right:-14%;bottom:-4%;width:46%}
+  .prop.berries{left:-10%;bottom:1%;width:32%}
+  @media (max-height:640px){ .prop.jars,.prop.pot{display:none} }
+
+  /* ========== App ========== */
+  #app{
+    position:relative;z-index:1;height:100vh;height:100dvh;max-width:480px;margin:0 auto;
+    display:flex;flex-direction:column;gap:10px;
+    padding:calc(var(--safe-top) + 10px) 14px calc(var(--safe-bottom) + 12px);
+  }
+
+  /* ---- HUD ---- */
+  .hud{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .pill{
+    display:flex;align-items:center;gap:8px;min-height:54px;padding:5px 16px 5px 8px;border-radius:18px;
+    border:3px solid var(--pink-500);background:linear-gradient(180deg,#FFF0F5 0%,#FBC4D6 100%);
+    box-shadow:0 4px 0 var(--pink-600), 0 6px 10px rgba(176,43,98,.2), inset 0 2px 0 #fff;
+  }
+  .pill svg{width:36px;height:36px;flex:none}
+  .pill b{display:block;font-family:var(--font-head);font-weight:700;font-size:19px;line-height:1.05;color:var(--brown)}
+  .pill small{display:block;font-size:12px;font-weight:900;color:var(--brown-2);letter-spacing:.2px}
+
+  /* ---- Botones brillantes 3D ---- */
+  .glossy{
+    position:relative;border:3px solid var(--pink-700);border-radius:20px;cursor:pointer;color:#fff;
+    background:linear-gradient(180deg,#FFA9CD 0%,#F26FA3 48%,#E2498A 100%);
+    box-shadow:0 6px 0 var(--pink-700), 0 10px 14px rgba(176,43,98,.28), inset 0 2px 0 rgba(255,255,255,.6);
+    transition:transform .12s ease-out, box-shadow .12s ease-out, filter .2s;
+    display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:700;
+    text-shadow:0 2px 0 rgba(176,43,98,.55);overflow:hidden;
+  }
+  .glossy::before{
+    content:"";position:absolute;left:7%;right:7%;top:4px;height:34%;border-radius:14px;
+    background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,.05));pointer-events:none;
+  }
+  .glossy:active,.glossy.pressed{transform:translateY(5px);box-shadow:0 1px 0 var(--pink-700), 0 2px 6px rgba(176,43,98,.3), inset 0 2px 0 rgba(255,255,255,.6)}
+  .glossy:disabled{filter:saturate(.45) brightness(1.08);opacity:.8;cursor:not-allowed}
+  .glossy:disabled:active{transform:none;box-shadow:0 6px 0 var(--pink-700), inset 0 2px 0 rgba(255,255,255,.6)}
+  .glossy:focus-visible{outline:4px solid #7DD3FC;outline-offset:2px}
+  .glossy.gold{
+    border-color:var(--gold-700);color:var(--brown);text-shadow:0 1px 0 rgba(255,255,255,.55);
+    background:linear-gradient(180deg,#FFEDA8 0%,#F9C74F 50%,#F2A12A 100%);
+    box-shadow:0 6px 0 var(--gold-800), 0 10px 14px rgba(168,95,14,.28), inset 0 2px 0 rgba(255,255,255,.7);
+  }
+  .glossy.gold:active,.glossy.gold.pressed{box-shadow:0 1px 0 var(--gold-800), 0 2px 6px rgba(168,95,14,.3), inset 0 2px 0 rgba(255,255,255,.7)}
+  .glossy.cream{
+    border-color:var(--pink-500);color:var(--brown);text-shadow:none;
+    background:linear-gradient(180deg,#FFFFFF 0%,#FFE7EF 100%);
+    box-shadow:0 5px 0 var(--pink-600), 0 8px 12px rgba(176,43,98,.2), inset 0 2px 0 #fff;
+  }
+  .glossy.cream:active,.glossy.cream.pressed{box-shadow:0 1px 0 var(--pink-600), inset 0 2px 0 #fff}
+  .btn{flex:1;min-height:84px;padding:6px 16px;border-radius:26px;flex-direction:column;gap:2px;font-size:25px;line-height:1.05;touch-action:none}
+  .btn svg{width:28px;height:28px;flex:none;filter:drop-shadow(0 2px 0 rgba(176,43,98,.5))}
+  .btn.gold svg{filter:drop-shadow(0 1px 0 rgba(255,255,255,.6))}
+  .btn.wide{flex-direction:row;gap:10px;font-size:23px;min-height:70px}
+  .sq{width:62px;height:62px;flex:none;border-radius:20px;touch-action:none}
+  .sq svg{width:30px;height:30px;filter:drop-shadow(0 2px 0 rgba(176,43,98,.5))}
+  .sq.hud-btn{width:54px;height:54px;border-radius:16px}
+  .sq.hud-btn svg{width:26px;height:26px}
+  .sq.face{width:72px;height:72px;border-radius:50%;border-color:var(--pink-500);padding:0;
+    background:radial-gradient(circle at 50% 35%,#FFF4C2 0%,#F9C74F 60%,#F2A12A 100%);
+    box-shadow:0 6px 0 var(--gold-800), 0 10px 14px rgba(168,95,14,.28), inset 0 2px 0 rgba(255,255,255,.8)}
+  .sq.face::before{display:none}
+  .sq.face svg{width:58px;height:58px;filter:none}
+  .sq.face:active{box-shadow:0 1px 0 var(--gold-800), inset 0 2px 0 rgba(255,255,255,.8)}
+  .actions{display:flex;align-items:center;gap:12px}
+  .actions .sq{align-self:flex-end}
+
+  /* ---- Pantallas ---- */
+  .screens{flex:1;position:relative;min-height:0}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;gap:10px}
+  .screen.active{display:flex;animation:screenIn .35s ease-out}
+  @keyframes screenIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  /* ---- Mascota y burbuja ---- */
+  .chef{display:flex;align-items:flex-start;gap:4px}
+  .mascot-slot{width:104px;height:104px;flex:none;margin-left:-6px}
+  .mascot{width:100%;height:100%;display:block;
+    filter:drop-shadow(0 0 1.6px #fff) drop-shadow(0 0 1.6px #fff) drop-shadow(0 0 1px #fff) drop-shadow(0 4px 3px rgba(120,40,70,.28))}
+  .mascot-slot.big{width:170px;height:170px;margin:0 auto}
+  .mascot-slot.bob .mascot{animation:bob 2.4s ease-in-out infinite}
+  .mascot-slot.cheer .mascot{animation:cheer .6s var(--bounce) infinite alternate}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+  @keyframes cheer{from{transform:translateY(0) rotate(-3deg) scale(1)}to{transform:translateY(-10px) rotate(3deg) scale(1.04)}}
+  .mascot .happy,.mascot .mouth-o{display:none}
+  .mascot.m-wink .eyeR .open{display:none}.mascot.m-wink .eyeR .happy{display:block}
+  .mascot.m-cheer .open{display:none}.mascot.m-cheer .happy{display:block}
+  .mascot.m-wow .mouth-smile{display:none}.mascot.m-wow .mouth-o{display:block}
+  .bubble{
+    flex:1;margin-top:12px;min-height:60px;padding:10px 14px;border-radius:22px;position:relative;
+    background:#FFF6F9;border:4px solid var(--pink-400);box-shadow:0 4px 0 var(--pink-600), 0 8px 12px rgba(176,43,98,.18);
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-weight:800;font-size:16px;line-height:1.35;color:var(--brown);
+  }
+  .bubble::before{
+    content:"";position:absolute;left:-14px;top:20px;width:20px;height:20px;background:#FFF6F9;
+    border-left:4px solid var(--pink-400);border-bottom:4px solid var(--pink-400);transform:rotate(45deg);border-radius:0 0 0 5px;
+  }
+  .bubble.pop{animation:bubblePop .4s var(--bounce)}
+  @keyframes bubblePop{from{transform:scale(.92)}to{transform:scale(1)}}
+
+  /* ---- Barra de progreso ---- */
+  .meter-row{display:flex;align-items:center;gap:10px;padding:0 6px}
+  .meter{
+    flex:1;height:28px;border-radius:999px;background:var(--plum);border:4px solid #F5A9C3;position:relative;overflow:hidden;
+    box-shadow:0 4px 0 var(--pink-600), inset 0 3px 5px rgba(0,0,0,.45);
+  }
+  .meter>i{
+    position:absolute;left:0;top:0;bottom:0;width:0%;border-radius:999px;
+    background:linear-gradient(180deg,#FFEDA8 0%,#F9C74F 55%,#F2A12A 100%);
+    box-shadow:inset 0 -3px 0 rgba(170,95,0,.35);transition:width .15s ease-out;
+  }
+  .meter>i::after{content:"";position:absolute;left:8px;right:8px;top:3px;height:5px;border-radius:3px;background:rgba(255,255,255,.6)}
+  .meter-val{font-family:var(--font-head);font-weight:700;font-size:19px;min-width:54px;text-align:right;color:var(--brown);text-shadow:0 1px 0 #fff}
+  .meter-label{font-family:var(--font-head);font-weight:700;font-size:17px;color:var(--brown);text-shadow:0 1px 0 #fff}
+
+  /* ---- Indicador del horno ---- */
+  .gauge-wrap{display:flex;flex-direction:column;gap:4px;padding:0 6px}
+  .gauge{
+    position:relative;height:30px;border-radius:999px;border:4px solid #F5A9C3;overflow:hidden;
+    background:linear-gradient(90deg,#FDE9A8 0 55%,#F2A12A 55% 72%,#6B3410 72% 100%);
+    box-shadow:0 4px 0 var(--pink-600), inset 0 3px 5px rgba(0,0,0,.25);
+  }
+  .gauge::after{content:"";position:absolute;left:8px;right:8px;top:3px;height:5px;border-radius:3px;background:rgba(255,255,255,.45)}
+  .gauge .marker{position:absolute;top:-3px;bottom:-3px;left:0;width:10px;margin-left:-5px;background:var(--pink-700);border-radius:5px;box-shadow:0 0 0 2.5px #fff}
+  .gauge-labels{display:flex;justify-content:space-between;font-size:13px;font-weight:900;color:var(--brown);padding:0 6px;text-shadow:0 1px 0 #fff}
+
+  /* ---- Escenario ---- */
+  .stage{flex:1;min-height:0;position:relative;touch-action:none;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .stage svg.scene{width:100%;height:100%;display:block}
+  .cake-wrap{position:relative}
+  .cake-wrap svg.scene{width:100%;height:100%}
+  .cake-wrap canvas{position:absolute;inset:0;width:100%;height:100%}
+
+  /* ---- Chips de sabor ---- */
+  .chips{display:flex;gap:10px;padding:0 2px}
+  .chip{flex:1;min-height:52px;border-radius:16px;font-size:17px;gap:8px;text-shadow:none}
+  .chip i{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(123,58,44,.35);display:inline-block;box-shadow:inset 0 2px 0 rgba(255,255,255,.5)}
+  .chip.sel{border-color:var(--gold-700);background:linear-gradient(180deg,#FFEDA8,#F9C74F);box-shadow:0 1px 0 var(--gold-800), inset 0 2px 0 rgba(255,255,255,.7);transform:translateY(4px)}
+
+  /* ---- Bandeja ---- */
+  .tray{display:flex;gap:8px;justify-content:space-between;touch-action:none;padding:0 2px}
+  .tray-item{width:56px;height:58px;flex:1;max-width:66px;border-radius:16px;cursor:grab;touch-action:none;padding:0}
+  .tray-item::before{top:3px;height:30%}
+  .tray-item:active{cursor:grabbing}
+  .tray-item svg{width:38px;height:38px;pointer-events:none;filter:none}
+  .ghost{position:fixed;left:0;top:0;width:60px;height:60px;pointer-events:none;z-index:var(--z-ghost);display:none;filter:drop-shadow(0 8px 8px rgba(120,40,70,.35))}
+  .ghost.on{display:block}
+  .ghost svg{width:100%;height:100%}
+  .placed{cursor:pointer}
+
+  /* ---- Portada ---- */
+  .intro{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:4px 0}
+  .ribbon{
+    display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:999px;font-size:14px;font-weight:900;color:#fff;
+    background:linear-gradient(180deg,#F27BAA,#D23A79);border:3px solid var(--pink-700);box-shadow:0 3px 0 var(--pink-800);text-shadow:0 1px 0 rgba(0,0,0,.2)
+  }
+  .ribbon svg{width:16px;height:16px}
+  .logo{
+    font-family:var(--font-head);font-weight:700;font-size:46px;line-height:1;color:#fff;margin:0;transform:rotate(-3deg);
+    text-shadow:
+      3px 0 0 var(--pink-600), -3px 0 0 var(--pink-600), 0 3px 0 var(--pink-600), 0 -3px 0 var(--pink-600),
+      2px 2px 0 var(--pink-600), -2px 2px 0 var(--pink-600), 2px -2px 0 var(--pink-600), -2px -2px 0 var(--pink-600),
+      0 7px 0 var(--pink-700), 0 12px 18px rgba(176,43,98,.4);
+  }
+  .logo small{display:block;font-size:26px;margin-top:6px}
+  .intro p{margin:0;font-weight:800;font-size:16px;max-width:30ch;color:var(--brown);
+    background:rgba(255,246,249,.9);border-radius:16px;padding:8px 14px;border:3px solid var(--pink-200)}
+
+  /* ---- Tarjeta de calificación ---- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(94,58,76,.45);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;padding:24px;z-index:var(--z-overlay);
+  }
+  .overlay.show{display:flex}
+  .card{
+    width:100%;max-width:360px;padding:18px 18px 18px;text-align:center;border-radius:30px;
+    background:#FFF6F9;border:4px solid var(--pink-400);box-shadow:0 7px 0 var(--pink-600), 0 16px 30px rgba(94,58,76,.4);
+    animation:popIn .5s var(--bounce);
+  }
+  @keyframes popIn{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+  .card h2{font-family:var(--font-head);font-weight:700;font-size:44px;margin:0;line-height:1;color:var(--pink-600);
+    text-shadow:0 3px 0 #fff, 0 6px 0 rgba(176,43,98,.25)}
+  .card p{margin:8px 0 14px;font-weight:800;color:var(--brown);font-size:16px}
+  .stars{display:flex;justify-content:center;gap:8px;margin:8px 0 2px}
+  .stars svg{width:44px;height:44px;transform:scale(.6);opacity:.55;filter:drop-shadow(0 3px 0 rgba(168,95,14,.35))}
+  .stars svg path{fill:#E9C9D4;stroke:#D9A9BA;stroke-width:1.5}
+  .stars svg.on{animation:starPop .45s var(--bounce) forwards}
+  .stars svg.on path{fill:url(#gStar);stroke:var(--gold-700);stroke-width:1.5}
+  .stars svg:nth-child(2).on{animation-delay:.15s}
+  .stars svg:nth-child(3).on{animation-delay:.3s}
+  @keyframes starPop{to{transform:scale(1);opacity:1}}
+  .card .btn{width:100%;min-height:66px;flex-direction:row;gap:8px;font-size:22px}
+
+  /* ---- Final ---- */
+  .screen.final{overflow:auto;touch-action:pan-y;gap:14px}
+  .final-cake{flex:none;padding:6px 10px 0}
+  .final-cake svg{width:100%;height:auto;display:block;max-height:250px}
+  .msg-card{
+    flex:none;padding:20px 18px;text-align:center;border-radius:28px;
+    background:#FFF6F9;border:4px solid var(--pink-400);box-shadow:0 6px 0 var(--pink-600), 0 12px 20px rgba(94,58,76,.2);
+    animation:popIn .6s var(--bounce);
+  }
+  .msg-card h1{font-family:var(--font-head);font-weight:700;font-size:34px;line-height:1.05;margin:0 0 8px;color:var(--pink-600);text-shadow:0 3px 0 #fff, 0 5px 0 rgba(176,43,98,.2)}
+  .msg-card .score{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:13px;font-weight:900;color:var(--brown);
+    background:linear-gradient(180deg,#FFEDA8,#F9C74F);border:2.5px solid var(--gold-700);margin-bottom:12px}
+  .msg-card .score svg{width:16px;height:16px}
+  .msg-card p{margin:0 0 12px;font-weight:700;line-height:1.6;text-align:left;color:var(--brown);-webkit-user-select:text;user-select:text}
+  .msg-card .firma{font-family:var(--font-head);font-weight:600;font-size:21px;color:var(--pink-600);text-align:right;margin-top:6px}
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:var(--z-confetti)}
+
+  /* ---- Partículas ---- */
+  .spark{position:fixed;width:10px;height:10px;border-radius:50%;pointer-events:none;z-index:var(--z-spark);animation:spark .6s ease-out forwards}
+  @keyframes spark{from{transform:translate(-50%,-50%) scale(1);opacity:1}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(0);opacity:0}}
+  .float{position:fixed;pointer-events:none;z-index:var(--z-spark);font-family:var(--font-head);font-weight:700;font-size:26px;color:#fff;
+    text-shadow:2px 0 0 var(--pink-600),-2px 0 0 var(--pink-600),0 2px 0 var(--pink-600),0 -2px 0 var(--pink-600),0 4px 0 var(--pink-700);
+    transform:translate(-50%,-50%);animation:floatUp .9s ease-out forwards}
+  @keyframes floatUp{from{transform:translate(-50%,-50%) scale(.6);opacity:0}25%{opacity:1;transform:translate(-50%,-70%) scale(1.1)}to{transform:translate(-50%,-130%) scale(1);opacity:0}}
+  .pulse{animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+
+  /* ---- Animaciones SVG ---- */
+  .egg{cursor:pointer}
+  .egg .crack{opacity:0;transition:opacity .1s}
+  .egg.cracked .crack{opacity:1}
+  .egg .half,.egg .yolk{opacity:0;transform-box:fill-box;transform-origin:center}
+  .egg.broken .shell,.egg.broken .crack,.egg.broken .shine{opacity:0}
+  .egg.broken .half{opacity:1}
+  .egg.broken .top{animation:eggTop .7s ease-out forwards}
+  .egg.broken .bottom{animation:eggBottom .7s ease-out forwards}
+  .egg.broken .yolk{opacity:1;animation:yolkDrop .8s ease-in forwards}
+  .egg .shell,.egg .shine{transform-box:fill-box;transform-origin:center}
+  .egg.cracked .shell,.egg.cracked .shine{animation:wiggle .25s ease-out}
+  @keyframes wiggle{0%{transform:rotate(0)}30%{transform:rotate(-6deg)}60%{transform:rotate(6deg)}100%{transform:rotate(0)}}
+  @keyframes eggTop{to{transform:translate(-22px,-34px) rotate(-30deg);opacity:0}}
+  @keyframes eggBottom{to{transform:translate(22px,26px) rotate(26deg);opacity:0}}
+  @keyframes yolkDrop{0%{transform:translateY(0) scale(1)}80%{transform:translateY(118px) scale(1.15,.85);opacity:1}100%{transform:translateY(122px) scale(1.5,.4);opacity:0}}
+  .stream{transform-box:fill-box;transform-origin:50% 0;transform:scaleY(0);transition:transform .18s ease-out}
+  .stream.on{transform:scaleY(1)}
+  .spill{opacity:0;transition:opacity .3s}
+  .spill.on{opacity:1}
+  .motion{opacity:0;transition:opacity .3s}
+  .motion.on{opacity:.8}
+  .whisk{transform-box:fill-box;transform-origin:50% 100%}
+  .whisk.shake{animation:shake .35s ease-out}
+  @keyframes shake{0%{transform:rotate(0)}25%{transform:rotate(-10deg)}60%{transform:rotate(10deg)}100%{transform:rotate(0)}}
+  .flame{transform-box:fill-box;transform-origin:50% 100%;opacity:0;transition:opacity .25s,transform .1s linear}
+  .candle.lit .flame{opacity:1;animation:flicker .45s ease-in-out infinite alternate}
+  .candle.lit.blow .flame{animation:none}
+  .candle.out .flame{opacity:0;animation:none}
+  @keyframes flicker{from{transform:scale(1,1) rotate(-3deg)}to{transform:scale(.92,1.1) rotate(4deg)}}
+  .candle .smoke{opacity:0;transform-box:fill-box;transform-origin:50% 100%}
+  .candle.out .smoke{animation:smoke 2s ease-out forwards}
+  @keyframes smoke{0%{opacity:0;transform:translateY(0) scale(.5)}20%{opacity:.75}100%{opacity:0;transform:translateY(-46px) scale(1.6)}}
+  .candle{cursor:pointer}
+  .candle .hit{fill:transparent}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+    .candle.lit .flame{animation:none;opacity:1}
+    .stars svg.on{transform:scale(1);opacity:1}
+  }
+  @media (max-height:700px){
+    .mascot-slot{width:88px;height:88px}
+    .bubble{font-size:15px;min-height:52px}
+    .btn{min-height:72px;font-size:22px}
+    .sq{width:56px;height:56px}
+    .sq.face{width:64px;height:64px}
+    .mascot-slot.big{width:130px;height:130px}
+    .logo{font-size:38px}
+  }
+</style>
+</head>
+<body>
+
+<!-- Símbolos y degradados reutilizables -->
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs>
+    <linearGradient id="gBowlRim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB9D4"/><stop offset=".6" stop-color="#F27BAA"/><stop offset="1" stop-color="#D23A79"/></linearGradient>
+    <linearGradient id="gBowlSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FBC4D6"/><stop offset=".45" stop-color="#F48BB0"/><stop offset="1" stop-color="#CF3B78"/></linearGradient>
+    <radialGradient id="gBatter" cx=".42" cy=".38" r=".75"><stop offset="0" stop-color="#FFF5D6"/><stop offset=".65" stop-color="#F7DE94"/><stop offset="1" stop-color="#E6C062"/></radialGradient>
+    <radialGradient id="gFlour" cx=".42" cy=".38" r=".75"><stop offset="0" stop-color="#FFFBF0"/><stop offset="1" stop-color="#F3E6CC"/></radialGradient>
+    <linearGradient id="gSteel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#EEF0F3"/><stop offset=".35" stop-color="#9CA3AF"/><stop offset=".6" stop-color="#D8DCE2"/><stop offset="1" stop-color="#6B7280"/></linearGradient>
+    <linearGradient id="gSteelV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3F4F6"/><stop offset=".5" stop-color="#B5BCC6"/><stop offset="1" stop-color="#7C8591"/></linearGradient>
+    <linearGradient id="gPinkV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFA9CD"/><stop offset=".5" stop-color="#F26FA3"/><stop offset="1" stop-color="#D23A79"/></linearGradient>
+    <linearGradient id="gPinkLight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE1EC"/><stop offset="1" stop-color="#F9A0C2"/></linearGradient>
+    <radialGradient id="gEgg" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="#FFFDF5"/><stop offset=".65" stop-color="#F8EAD2"/><stop offset="1" stop-color="#DFC39C"/></radialGradient>
+    <radialGradient id="gYolk" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#FFE07A"/><stop offset="1" stop-color="#F59E0B"/></radialGradient>
+    <linearGradient id="gSponge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FAE4A8"/><stop offset="1" stop-color="#E3B458"/></linearGradient>
+    <linearGradient id="gGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFEDA8"/><stop offset=".5" stop-color="#F9C74F"/><stop offset="1" stop-color="#F2A12A"/></linearGradient>
+    <linearGradient id="gStar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF0B3"/><stop offset=".5" stop-color="#FACC15"/><stop offset="1" stop-color="#F59E0B"/></linearGradient>
+    <linearGradient id="gPlate" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E8E2E8"/></linearGradient>
+    <linearGradient id="gWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E9BE7E"/><stop offset="1" stop-color="#C98B47"/></linearGradient>
+    <radialGradient id="gFlame" cx=".5" cy=".75" r=".65"><stop offset="0" stop-color="#FFF6C2"/><stop offset=".45" stop-color="#FDBA2E"/><stop offset="1" stop-color="#F26B1D"/></radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFE08A" stop-opacity=".9"/><stop offset="100%" stop-color="#FFE08A" stop-opacity="0"/></radialGradient>
+    <radialGradient id="heat" cx="50%" cy="100%" r="80%"><stop offset="0%" stop-color="#F97316"/><stop offset="100%" stop-color="#F97316" stop-opacity="0"/></radialGradient>
+    <filter id="blur4" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+    <pattern id="gingham" width="22" height="22" patternUnits="userSpaceOnUse">
+      <rect width="22" height="22" fill="#FFF3F7"/><rect width="11" height="22" fill="#F9B4CC" opacity=".55"/><rect width="22" height="11" fill="#F9B4CC" opacity=".55"/>
+    </pattern>
+
+    <g id="t-fresa">
+      <path d="M0 15 C -14 7 -15 -8 -7 -9 C -3 -9 -1 -7 0 -5 C 1 -7 3 -9 7 -9 C 15 -8 14 7 0 15 Z" fill="#F43F5E" stroke="#BE123C" stroke-width="2"/>
+      <path d="M-9 -4 C -10 2 -7 8 -2 11" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".45"/>
+      <ellipse cx="-5" cy="0" rx="1.4" ry="2" fill="#FDE68A"/><ellipse cx="4" cy="2" rx="1.4" ry="2" fill="#FDE68A"/>
+      <ellipse cx="-1" cy="7" rx="1.4" ry="2" fill="#FDE68A"/><ellipse cx="-7" cy="6" rx="1.2" ry="1.8" fill="#FDE68A"/><ellipse cx="6" cy="-3" rx="1.2" ry="1.8" fill="#FDE68A"/>
+      <path d="M-7 -9 L-3 -15 L0 -10 L3 -15 L7 -9 L0 -7 Z" fill="#22C55E" stroke="#15803D" stroke-width="1.5" stroke-linejoin="round"/>
+    </g>
+    <g id="t-cereza">
+      <path d="M-4 -4 Q 0 -18 10 -15" stroke="#166534" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="-4" cy="4" r="8.5" fill="#DC2626" stroke="#991B1B" stroke-width="2"/>
+      <ellipse cx="-7" cy="1" rx="2.4" ry="1.5" fill="#fff" opacity=".75"/>
+    </g>
+    <g id="t-corazon">
+      <path d="M0 11 C -16 -1 -11 -16 0 -8 C 11 -16 16 -1 0 11 Z" fill="#FB7185" stroke="#E11D48" stroke-width="2" stroke-linejoin="round"/>
+      <ellipse cx="-6" cy="-6" rx="2.6" ry="1.6" fill="#fff" opacity=".75" transform="rotate(-30 -6 -6)"/>
+    </g>
+    <g id="t-estrella">
+      <path d="M0 -12 L3.5 -4.2 L12 -3.7 L5.5 2 L7.4 10.5 L0 6 L-7.4 10.5 L-5.5 2 L-12 -3.7 L-3.5 -4.2 Z" fill="#FACC15" stroke="#CA8A04" stroke-width="2" stroke-linejoin="round"/>
+    </g>
+    <g id="t-choco">
+      <rect x="-10" y="-8" width="20" height="16" rx="4" fill="#7C3A2D" stroke="#4A2419" stroke-width="2"/>
+      <line x1="0" y1="-8" x2="0" y2="8" stroke="#4A2419" stroke-width="1.5"/><line x1="-10" y1="0" x2="10" y2="0" stroke="#4A2419" stroke-width="1.5"/>
+      <rect x="-7" y="-5" width="4" height="2" rx="1" fill="#B0705E"/>
+    </g>
+    <g id="t-flor">
+      <circle cx="0" cy="-8" r="5.5" fill="#C084FC" stroke="#9333EA" stroke-width="1.5"/>
+      <circle cx="7.6" cy="-2.5" r="5.5" fill="#C084FC" stroke="#9333EA" stroke-width="1.5"/>
+      <circle cx="4.7" cy="6.5" r="5.5" fill="#C084FC" stroke="#9333EA" stroke-width="1.5"/>
+      <circle cx="-4.7" cy="6.5" r="5.5" fill="#C084FC" stroke="#9333EA" stroke-width="1.5"/>
+      <circle cx="-7.6" cy="-2.5" r="5.5" fill="#C084FC" stroke="#9333EA" stroke-width="1.5"/>
+      <circle cx="0" cy="0" r="4.5" fill="#FDE047" stroke="#CA8A04" stroke-width="1.5"/>
+      <circle cx="-1.5" cy="-1.5" r="1.5" fill="#fff" opacity=".7"/>
+    </g>
+    <g id="t-chispas">
+      <rect x="-10" y="-6" width="7" height="3" rx="1.5" fill="#F472B6" transform="rotate(-30 -6.5 -4.5)"/>
+      <rect x="2" y="-9" width="7" height="3" rx="1.5" fill="#60A5FA" transform="rotate(20 5.5 -7.5)"/>
+      <rect x="-3" y="0" width="7" height="3" rx="1.5" fill="#FACC15" transform="rotate(-10 .5 1.5)"/>
+      <rect x="5" y="3" width="7" height="3" rx="1.5" fill="#34D399" transform="rotate(40 8.5 4.5)"/>
+      <rect x="-11" y="4" width="7" height="3" rx="1.5" fill="#A78BFA" transform="rotate(15 -7.5 5.5)"/>
+    </g>
+    <g id="i-cake">
+      <path d="M6 24 L34 24 L31 36 Q20 40 9 36 Z" fill="#F9A0C2" stroke="#C73B78" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M8 24 L32 24 L31 29 L9 29 Z" fill="#FBE4A3" stroke="#C4761A" stroke-width="1.5"/>
+      <path d="M4 20 Q20 10 36 20 L34 25 Q20 18 6 25 Z" fill="#FFC2DA" stroke="#C73B78" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M20 8 c-5 4 -6 8 0 10 c6 -2 5 -6 0 -10z" fill="#F43F5E" stroke="#BE123C" stroke-width="1.5"/>
+      <path d="M17 7 L20 3 L23 7 Z" fill="#22C55E"/>
+    </g>
+  </defs>
+</svg>
+
+<!-- Cocina -->
+<div class="kitchen" aria-hidden="true">
+  <div class="wall"></div>
+  <div class="counter"></div>
+  <div class="prop shelf"><svg viewBox="0 0 200 150">
+    <rect x="20" y="58" width="180" height="12" rx="4" fill="url(#gWood)" stroke="#9F6630" stroke-width="2"/>
+    <path d="M40 70 L40 92 L60 70 Z" fill="#C98B47" stroke="#9F6630" stroke-width="2"/>
+    <rect x="20" y="120" width="180" height="12" rx="4" fill="url(#gWood)" stroke="#9F6630" stroke-width="2"/>
+    <path d="M140 132 L140 150 L160 132 Z" fill="#C98B47" stroke="#9F6630" stroke-width="2"/>
+    <g transform="translate(70,20)">
+      <ellipse cx="0" cy="-2" rx="16" ry="10" fill="#4CAF50"/><ellipse cx="-14" cy="6" rx="12" ry="8" fill="#43A047" transform="rotate(-25)"/><ellipse cx="16" cy="4" rx="12" ry="8" fill="#5BBF5E" transform="rotate(25)"/>
+      <ellipse cx="4" cy="-14" rx="9" ry="12" fill="#66BB6A" transform="rotate(15)"/><path d="M-20 10 Q -34 30 -30 46" stroke="#43A047" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="-30" cy="46" rx="6" ry="4" fill="#5BBF5E"/>
+      <path d="M-18 14 L18 14 L14 38 L-14 38 Z" fill="#F9A0C2" stroke="#C73B78" stroke-width="2" stroke-linejoin="round"/><circle cx="-6" cy="24" r="3" fill="#fff" opacity=".7"/><circle cx="8" cy="30" r="2.5" fill="#fff" opacity=".7"/>
+    </g>
+    <g transform="translate(150,30)"><rect x="-16" y="-2" width="32" height="30" rx="7" fill="#FFF3F7" stroke="#E85C97" stroke-width="2"/><rect x="-12" y="-10" width="24" height="10" rx="4" fill="#F27BAA" stroke="#C73B78" stroke-width="2"/><path d="M0 18 c-5 -5 -7 -10 -3 -12 c2 -1 3 1 3 2 c0 -1 1 -3 3 -2 c4 2 2 7 -3 12z" fill="#F27BAA"/></g>
+    <g transform="translate(110,96)"><rect x="-14" y="-2" width="28" height="26" rx="6" fill="#FFF3F7" stroke="#E85C97" stroke-width="2"/><rect x="-11" y="-9" width="22" height="9" rx="4" fill="#F27BAA" stroke="#C73B78" stroke-width="2"/><path d="M0 16 c-4 -4 -6 -8 -2 -10 c1.5 -1 2 1 2 2 c0 -1 .5 -3 2 -2 c4 2 2 6 -2 10z" fill="#F27BAA"/></g>
+    <g transform="translate(160,98)"><rect x="-14" y="-2" width="28" height="26" rx="6" fill="#FFF3F7" stroke="#E85C97" stroke-width="2"/><rect x="-11" y="-9" width="22" height="9" rx="4" fill="#F27BAA" stroke="#C73B78" stroke-width="2"/><circle cx="0" cy="11" r="5" fill="#F27BAA"/></g>
+  </svg></div>
+  <div class="prop jars"><svg viewBox="0 0 110 120">
+    <g transform="translate(40,40)"><rect x="-30" y="0" width="60" height="70" rx="12" fill="#FFF3F7" stroke="#E85C97" stroke-width="3"/><rect x="-22" y="-14" width="44" height="16" rx="6" fill="#F27BAA" stroke="#C73B78" stroke-width="3"/><circle cx="0" cy="-16" r="5" fill="#F27BAA" stroke="#C73B78" stroke-width="2"/><path d="M0 48 c-10 -9 -14 -19 -6 -23 c3 -1.5 5 1.5 6 3 c1 -1.5 3 -4.5 6 -3 c8 4 4 14 -6 23z" fill="#F27BAA"/><rect x="-24" y="8" width="6" height="40" rx="3" fill="#fff" opacity=".7"/></g>
+    <g transform="translate(92,70)"><rect x="-18" y="0" width="36" height="44" rx="8" fill="#FFF3F7" stroke="#E85C97" stroke-width="3"/><rect x="-14" y="-10" width="28" height="12" rx="5" fill="#F27BAA" stroke="#C73B78" stroke-width="3"/><circle cx="0" cy="24" r="7" fill="#F9A0C2"/></g>
+  </svg></div>
+  <div class="prop pot"><svg viewBox="0 0 90 130">
+    <g transform="translate(45,50)">
+      <rect x="-28" y="20" width="56" height="60" rx="10" fill="#FFF3F7" stroke="#E85C97" stroke-width="3"/><ellipse cx="0" cy="20" rx="28" ry="7" fill="#F9A0C2" stroke="#E85C97" stroke-width="3"/>
+      <path d="M0 48 c-6 -6 -8 -12 -3 -14 c1.5 -1 3 1 3 2 c0 -1 1.5 -3 3 -2 c5 2 3 8 -3 14z" fill="#F27BAA"/>
+      <g transform="translate(-12,18) rotate(-12)"><rect x="-4" y="-50" width="8" height="52" rx="4" fill="url(#gWood)" stroke="#9F6630" stroke-width="2"/><rect x="-9" y="-66" width="18" height="20" rx="5" fill="#E2B072" stroke="#9F6630" stroke-width="2"/></g>
+      <g transform="translate(4,16)"><rect x="-4" y="-56" width="8" height="58" rx="4" fill="url(#gWood)" stroke="#9F6630" stroke-width="2"/><ellipse cx="0" cy="-64" rx="9" ry="12" fill="#E2B072" stroke="#9F6630" stroke-width="2"/></g>
+      <g transform="translate(18,20) rotate(14)"><rect x="-4" y="-48" width="8" height="50" rx="4" fill="url(#gWood)" stroke="#9F6630" stroke-width="2"/><path d="M-9 -64 L9 -64 L7 -46 L-7 -46 Z" fill="#E2B072" stroke="#9F6630" stroke-width="2"/></g>
+    </g>
+  </svg></div>
+  <div class="prop towel"><svg viewBox="0 0 220 120"><g transform="rotate(-8 110 60)"><rect x="10" y="20" width="200" height="90" rx="12" fill="url(#gingham)" stroke="#E985AE" stroke-width="3"/><path d="M10 50 Q60 42 110 50 T210 50" stroke="#fff" stroke-width="3" fill="none" opacity=".5"/></g></svg></div>
+  <div class="prop berries"><svg viewBox="0 0 150 110">
+    <ellipse cx="75" cy="98" rx="60" ry="8" fill="#9F6630" opacity=".25"/>
+    <path d="M15 50 C 18 85 45 100 75 100 C 105 100 132 85 135 50 Z" fill="url(#gBowlSide)" stroke="#B02B62" stroke-width="3"/>
+    <ellipse cx="75" cy="50" rx="60" ry="16" fill="url(#gBowlRim)" stroke="#B02B62" stroke-width="3"/>
+    <g transform="translate(55,44) scale(1.3)"><use href="#t-fresa"/></g><g transform="translate(90,40) scale(1.4) rotate(20)"><use href="#t-fresa"/></g><g transform="translate(72,30) scale(1.2) rotate(-15)"><use href="#t-fresa"/></g>
+  </svg></div>
+</div>
+
+<div id="app">
+  <header class="hud">
+    <div class="pill" id="hud-pill">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><use href="#i-cake"/></svg>
+      <div><b id="top-label">Pastel de cumple</b><small id="top-sub">Solo para ti</small></div>
+    </div>
+    <button class="glossy sq hud-btn" id="mute" aria-label="Silenciar sonidos" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="ic-on"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="ic-off" style="display:none"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
+    </button>
+  </header>
+
+  <div class="screens">
+
+    <!-- PORTADA -->
+    <section class="screen" data-screen="intro">
+      <div class="intro">
+        <div class="mascot-slot big bob" data-mood="m-cheer"></div>
+        <span class="ribbon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.6-9.3-9A5.2 5.2 0 0 1 12 6.3 5.2 5.2 0 0 1 21.3 12C19 16.4 12 21 12 21z"/></svg> Maju </span>
+        <h1 class="logo" id="intro-title">Un pastel<small>para ti</small></h1>
+        <p id="intro-text">Hoy vamos a hornear tu pastel de cumpleaños, paso a paso. Ponte el delantal.</p>
+      </div>
+      <div class="actions">
+        <button class="glossy btn gold wide" id="btn-start">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+          ¡Manos a la masa!
+        </button>
+      </div>
+    </section>
+
+    <!-- 1 MEZCLAR -->
+    <section class="screen" data-screen="mezclar">
+      <div class="chef"><div class="mascot-slot"></div><div class="bubble" id="mezclar-bubble">Dibuja círculos sobre el tazón para batir la mezcla.</div></div>
+      <div class="meter-row"><span class="meter-label">Mezcla</span><div class="meter"><i id="mezclar-bar"></i></div><span class="meter-val" id="mezclar-val">0%</span></div>
+      <div class="stage" id="mezclar-stage"></div>
+      <div class="actions">
+        <button class="glossy sq" data-back aria-label="Repetir paso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></button>
+        <button class="glossy btn" id="btn-mix">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3 21 10"/><path d="M12 5c-4 2-8 7-6 11s9-2 11-6"/><path d="M9 9c3 0 6 3 6 6"/></svg>
+          Mezclar
+        </button>
+        <button class="glossy sq face" data-hint aria-label="Pista de la chef"></button>
+      </div>
+    </section>
+
+    <!-- 2 HUEVOS -->
+    <section class="screen" data-screen="huevos">
+      <div class="chef"><div class="mascot-slot"></div><div class="bubble" id="huevos-bubble">Toca cada huevo dos veces para romperlo en el tazón.</div></div>
+      <div class="meter-row"><span class="meter-label">Huevos</span><div class="meter"><i id="huevos-bar"></i></div><span class="meter-val" id="huevos-val">0/3</span></div>
+      <div class="stage" id="huevos-stage"></div>
+      <div class="actions">
+        <button class="glossy sq" data-back aria-label="Repetir paso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></button>
+        <button class="glossy btn" id="btn-crack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-4 0-7 5-7 10a7 7 0 0 0 14 0c0-5-3-10-7-10z"/><path d="m9 12 2 2-2 2 3 2"/></svg>
+          Romper
+        </button>
+        <button class="glossy sq face" data-hint aria-label="Pista de la chef"></button>
+      </div>
+    </section>
+
+    <!-- 3 VERTER -->
+    <section class="screen" data-screen="verter">
+      <div class="chef"><div class="mascot-slot"></div><div class="bubble" id="verter-bubble">Mantén presionado "Verter" y suelta cuando la mezcla llegue a la zona verde.</div></div>
+      <div class="meter-row"><span class="meter-label">Molde</span><div class="meter"><i id="verter-bar"></i></div><span class="meter-val" id="verter-val">0%</span></div>
+      <div class="stage" id="verter-stage" style="cursor:default"></div>
+      <div class="actions">
+        <button class="glossy sq" data-back aria-label="Repetir paso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></button>
+        <button class="glossy btn" id="btn-pour">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Verter
+        </button>
+        <button class="glossy sq face" data-hint aria-label="Pista de la chef"></button>
+      </div>
+    </section>
+
+    <!-- 4 HORNEAR -->
+    <section class="screen" data-screen="hornear">
+      <div class="chef"><div class="mascot-slot"></div><div class="bubble" id="hornear-bubble">Saca el pastel cuando el indicador esté en la zona dorada.</div></div>
+      <div class="gauge-wrap">
+        <div class="gauge" aria-hidden="true"><div class="marker" id="marker"></div></div>
+        <div class="gauge-labels"><span>Crudo</span><span>Dorado</span><span>Quemado</span></div>
+      </div>
+      <div class="stage" id="hornear-stage" style="cursor:default"></div>
+      <div class="actions">
+        <button class="glossy sq" data-back aria-label="Repetir paso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></button>
+        <button class="glossy btn" id="btn-bake">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="3"/><path d="M3 10h18"/><rect x="7" y="13" width="10" height="4" rx="1"/></svg>
+          ¡Sacar!
+        </button>
+        <button class="glossy sq face" data-hint aria-label="Pista de la chef"></button>
+      </div>
+    </section>
+
+    <!-- 5 CUBRIR -->
+    <section class="screen" data-screen="cubrir">
+      <div class="chef"><div class="mascot-slot"></div><div class="bubble" id="cubrir-bubble">Elige el sabor del betún y luego desliza el dedo sobre el pastel para cubrirlo.</div></div>
+      <div class="chips" id="chips">
+        <button class="glossy cream chip" data-color="#F9A8D4" data-name="fresa"><i style="background:#F9A8D4"></i>Fresa</button>
+        <button class="glossy cream chip" data-color="#8B5A3C" data-name="chocolate"><i style="background:#8B5A3C"></i>Chocolate</button>
+        <button class="glossy cream chip" data-color="#FDE68A" data-name="vainilla"><i style="background:#FDE68A"></i>Vainilla</button>
+      </div>
+      <div class="meter-row"><span class="meter-label">Betún</span><div class="meter"><i id="cubrir-bar"></i></div><span class="meter-val" id="cubrir-val">0%</span></div>
+      <div class="stage" id="cubrir-stage"><div class="cake-wrap" id="cubrir-wrap"></div></div>
+      <div class="actions">
+        <button class="glossy sq" data-back aria-label="Repetir paso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></button>
+        <button class="glossy btn" id="btn-spread">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 10 14"/><path d="M9 9l6 6 5-5a3 3 0 0 0-4-4l-7 3z"/></svg>
+          Untar
+        </button>
+        <button class="glossy sq face" data-hint aria-label="Pista de la chef"></button>
+      </div>
+    </section>
+
+    <!-- 6 DECORAR -->
+    <section class="screen" data-screen="decorar">
+      <div class="chef"><div class="mascot-slot"></div><div class="bubble" id="decorar-bubble">Arrastra las decoraciones hasta el pastel. Toca una para quitarla.</div></div>
+      <div class="stage" id="decorar-stage" style="cursor:default"><div class="cake-wrap" id="decorar-wrap"></div></div>
+      <div class="tray" id="tray">
+        <button class="glossy cream tray-item" data-type="fresa" aria-label="Fresa"><svg viewBox="-20 -20 40 40"><use href="#t-fresa"/></svg></button>
+        <button class="glossy cream tray-item" data-type="cereza" aria-label="Cereza"><svg viewBox="-20 -20 40 40"><use href="#t-cereza"/></svg></button>
+        <button class="glossy cream tray-item" data-type="corazon" aria-label="Corazón"><svg viewBox="-20 -20 40 40"><use href="#t-corazon"/></svg></button>
+        <button class="glossy cream tray-item" data-type="flor" aria-label="Flor"><svg viewBox="-20 -20 40 40"><use href="#t-flor"/></svg></button>
+        <button class="glossy cream tray-item" data-type="choco" aria-label="Chocolate"><svg viewBox="-20 -20 40 40"><use href="#t-choco"/></svg></button>
+        <button class="glossy cream tray-item" data-type="chispas" aria-label="Chispas"><svg viewBox="-20 -20 40 40"><use href="#t-chispas"/></svg></button>
+      </div>
+      <div class="actions">
+        <button class="glossy sq" data-back aria-label="Repetir paso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></button>
+        <button class="glossy btn wide" id="btn-decor-done" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>
+          <span id="decor-count">Coloca 6</span>
+        </button>
+        <button class="glossy sq face" data-hint aria-label="Pista de la chef"></button>
+      </div>
+    </section>
+
+    <!-- 7 VELAS -->
+    <section class="screen" data-screen="velas">
+      <div class="chef"><div class="mascot-slot"></div><div class="bubble" id="velas-bubble">Toca cada vela para encenderla.</div></div>
+      <div class="meter-row"><span class="meter-label">Velas</span><div class="meter"><i id="velas-bar"></i></div><span class="meter-val" id="velas-val">0/5</span></div>
+      <div class="stage" id="velas-stage"><div class="cake-wrap" id="velas-wrap"></div></div>
+      <div class="actions">
+        <button class="glossy sq" data-back aria-label="Repetir paso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></button>
+        <button class="glossy btn" id="btn-blow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h8a3 3 0 1 0-3-3"/><path d="M3 12h13a3 3 0 1 1-3 3"/><path d="M3 16h6a2 2 0 1 1-2 2"/></svg>
+          <span id="blow-label">Encender</span>
+        </button>
+        <button class="glossy sq face" data-hint aria-label="Pista de la chef"></button>
+      </div>
+    </section>
+
+    <!-- FINAL -->
+    <section class="screen final" data-screen="final">
+      <div class="final-cake" id="final-cake"></div>
+      <div class="msg-card">
+        <h1 id="final-title">¡Feliz cumpleaños!</h1>
+        <div class="score" id="final-score"></div>
+        <div id="final-msg"></div>
+        <div class="firma" id="final-firma"></div>
+      </div>
+      <div class="actions" style="flex:none">
+        <button class="glossy btn gold wide" id="btn-restart">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          Hornear otra vez
+        </button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div class="ghost" id="ghost"></div>
+<canvas class="confetti" id="confetti"></canvas>
+
+<!-- Calificación estilo Cooking Mama -->
+<div class="overlay" id="feedback" role="dialog" aria-modal="true" aria-labelledby="fb-title">
+  <div class="card">
+    <div class="mascot-slot big" id="fb-mascot"></div>
+    <h2 id="fb-title">¡Perfecto!</h2>
+    <div class="stars" id="fb-stars" aria-label="Calificación"></div>
+    <p id="fb-line"></p>
+    <button class="glossy btn" id="fb-next">
+      Siguiente
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIG — personaliza aquí. Es lo único que necesitas tocar.
+   ===================================================================== */
+const CONFIG = {
+  nombre: "mi amor",                 // Nombre de tu novia (ej. "Ana")
+  firma: "Con todo mi amor, Luis",   // Cómo quieres firmar el mensaje
+  velas: 5,                          // Número de velas en el pastel (1 a 9)
+  tituloFinal: "¡Feliz cumpleaños, {nombre}!",
+  mensaje: [
+    "Hoy no es un día cualquiera: es el día en que llegaste al mundo, y desde que llegaste al mío todo sabe más dulce.",
+    "Este pastel lo hicimos juntos, paso a paso, igual que todo lo que construimos. Con paciencia, con risas y con mucho amor.",
+    "Gracias por cada abrazo, cada ocurrencia y cada día a tu lado. Que este año te traiga todo lo bonito que mereces, y que yo pueda estar ahí para verlo.",
+    "Te amo más de lo que cabe en un pastel. Feliz cumpleaños."
+  ],
+  sonidos: true,
+};
+
+/* =====================================================================
+   Utilidades
+   ===================================================================== */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const lerp  = (a,b,t) => a + (b-a)*t;
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let uid = 0;
+
+function hexToRgb(h){ h=h.replace('#',''); return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]; }
+function rgbToHex(r,g,b){ return '#' + [r,g,b].map(v => clamp(Math.round(v),0,255).toString(16).padStart(2,'0')).join(''); }
+function mix(c1,c2,t){ const a=hexToRgb(c1), b=hexToRgb(c2); return rgbToHex(lerp(a[0],b[0],t), lerp(a[1],b[1],t), lerp(a[2],b[2],t)); }
+const darken  = (c,t) => mix(c,'#000000',t);
+const lighten = (c,t) => mix(c,'#ffffff',t);
+
+function buzz(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+function svgPoint(svg, e){
+  const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const m = svg.getScreenCTM(); if(!m) return {x:0,y:0};
+  return pt.matrixTransform(m.inverse());
+}
+function sparkle(x, y, n=10){
+  if(REDUCED) return;
+  const colors = ['#FFE08A','#F9C74F','#FF9DC5','#FFFFFF','#F27BAA'];
+  for(let i=0;i<n;i++){
+    const s = document.createElement('span'); s.className = 'spark';
+    const a = Math.random()*Math.PI*2, d = 28 + Math.random()*46;
+    s.style.setProperty('--dx', (Math.cos(a)*d).toFixed(1)+'px'); s.style.setProperty('--dy', (Math.sin(a)*d).toFixed(1)+'px');
+    s.style.left = x+'px'; s.style.top = y+'px'; s.style.background = colors[i%colors.length];
+    s.style.width = s.style.height = (6+Math.random()*7)+'px';
+    document.body.appendChild(s); s.addEventListener('animationend', () => s.remove());
+  }
+}
+function floatText(x, y, txt){
+  if(REDUCED) return;
+  const f = document.createElement('div'); f.className = 'float'; f.textContent = txt; f.style.left = x+'px'; f.style.top = y+'px';
+  document.body.appendChild(f); f.addEventListener('animationend', () => f.remove());
+}
+function centerOf(el){ const r = el.getBoundingClientRect(); return { x: r.left + r.width/2, y: r.top + r.height/2 }; }
+
+/* ---------- Sonidos (WebAudio, sin archivos) ---------- */
+const Sound = (() => {
+  let ctx = null;
+  function ensure(){
+    if(!CONFIG.sonidos || state.muted) return null;
+    try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); if(ctx.state === 'suspended') ctx.resume(); return ctx; }catch(e){ return null; }
+  }
+  function tone(freq, dur=0.12, type='sine', vol=0.16, when=0, slide=0){
+    const c = ensure(); if(!c) return;
+    const o = c.createOscillator(), g = c.createGain(), t0 = c.currentTime + when;
+    o.type = type; o.frequency.setValueAtTime(freq, t0);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq+slide), t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  return {
+    unlock(){ ensure(); },
+    pop(){ tone(520, 0.09, 'triangle', 0.14, 0, 260); },
+    tick(){ tone(900, 0.05, 'square', 0.04); },
+    crack(){ tone(210, 0.1, 'sawtooth', 0.1); tone(150, 0.14, 'square', 0.07, 0.03); },
+    splash(){ tone(380, 0.16, 'sine', 0.12, 0, -120); tone(300, 0.2, 'sine', 0.08, 0.06); },
+    success(){ [523,659,784,1047].forEach((f,i) => tone(f, 0.26, 'triangle', 0.15, i*0.09)); },
+    fail(){ tone(230, 0.2, 'sine', 0.1, 0, -60); tone(185, 0.26, 'sine', 0.1, 0.16); },
+    fanfare(){ [523,659,784,1047,784,1047,1319].forEach((f,i) => tone(f, 0.3, 'triangle', 0.15, i*0.12)); },
+    puff(){ tone(320, 0.35, 'sine', 0.07, 0, -200); tone(240, 0.4, 'sine', 0.05, 0.1); },
+    light(){ tone(700, 0.06, 'triangle', 0.1); tone(1000, 0.1, 'triangle', 0.08, 0.05); },
+    stir(){ tone(260, 0.06, 'triangle', 0.05, 0, 80); }
+  };
+})();
+
+/* =====================================================================
+   Estado del juego
+   ===================================================================== */
+const STEPS = [
+  { id:'mezclar', label:'Mezclar', hint:'Dibuja círculos sobre el tazón para batir la mezcla. También puedes tocar "Mezclar".' },
+  { id:'huevos',  label:'Huevos',  hint:'Toca cada huevo dos veces para romperlo en el tazón.' },
+  { id:'verter',  label:'Verter',  hint:'Mantén presionado "Verter" y suelta cuando la mezcla llegue a la zona verde.' },
+  { id:'hornear', label:'Hornear', hint:'Toca "¡Sacar!" cuando el indicador esté en la zona dorada.' },
+  { id:'cubrir',  label:'Cubrir',  hint:'Elige el sabor del betún y desliza el dedo sobre el pastel para cubrirlo.' },
+  { id:'decorar', label:'Decorar', hint:'Arrastra las decoraciones hasta el pastel. Toca una para quitarla.' },
+  { id:'velas',   label:'Velas',   hint:'Toca cada vela para encenderla. Luego mantén presionado "Soplar".' },
+];
+const state = {
+  step: -1, stars: [], muted: false,
+  frosted: false, frostColor: '#F9A8D4', frostName: 'fresa',
+  toppings: [], lit: [],
+};
+const NUM_VELAS = clamp(parseInt(CONFIG.velas,10) || 5, 1, 9);
+
+/* =====================================================================
+   SVG compartidos
+   ===================================================================== */
+function mascotSVG(mood='m-wink'){
+  const HAIR = '#211B1E', HAIR_HI = '#4A3F45', SKIN = '#FFE1CC', LINE = '#7E3A2C', FRAME = '#C98B47';
+  return `<svg viewBox="0 0 120 120" class="mascot ${mood}" aria-hidden="true">
+  <!-- cabello trasero, largo -->
+  <path d="M30 52 Q27 20 60 18 Q93 20 90 52 L95 114 L78 114 L77 86 Q60 94 43 86 L42 114 L25 114 Z" fill="${HAIR}" stroke="#120D10" stroke-width="2" stroke-linejoin="round"/>
+  <!-- cuchara -->
+  <g transform="translate(21,76) rotate(-28)">
+    <rect x="-4" y="-6" width="8" height="42" rx="4" fill="#D29A5A" stroke="#8B5A2B" stroke-width="2"/>
+    <ellipse cx="0" cy="-14" rx="9" ry="12" fill="#E2B072" stroke="#8B5A2B" stroke-width="2"/>
+    <ellipse cx="-2" cy="-16" rx="4" ry="6" fill="#C98B47" opacity=".55"/>
+  </g>
+  <!-- camiseta de rayas -->
+  <defs><clipPath id="shirtClip"><path d="M36 82 Q60 72 84 82 L88 116 L32 116 Z"/></clipPath></defs>
+  <path d="M36 82 Q60 72 84 82 L88 116 L32 116 Z" fill="#FFFFFF" stroke="${LINE}" stroke-width="2.5" stroke-linejoin="round"/>
+  <g clip-path="url(#shirtClip)" fill="${HAIR}"><rect x="30" y="80" width="60" height="4"/><rect x="30" y="88" width="60" height="4"/><rect x="30" y="96" width="60" height="4"/><rect x="30" y="104" width="60" height="4"/><rect x="30" y="112" width="60" height="4"/></g>
+  <path d="M49 81 Q60 89 71 81" fill="none" stroke="${HAIR}" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- delantal -->
+  <path d="M50 92 L50 84 Q60 79 70 84 L70 92" fill="#F9C74F" stroke="#C4761A" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M43 92 L77 92 L81 116 L39 116 Z" fill="#F9C74F" stroke="#C4761A" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="53" y="100" width="14" height="10" rx="3" fill="#F4A62A" stroke="#C4761A" stroke-width="1.5"/>
+  <!-- mechones delanteros sobre los hombros -->
+  <path d="M34 50 Q24 72 29 110 L42 110 Q39 82 45 62 Z" fill="${HAIR}" stroke="#120D10" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M86 50 Q96 72 91 110 L78 110 Q81 82 75 62 Z" fill="${HAIR}" stroke="#120D10" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M31 70 Q29 88 32 104" stroke="${HAIR_HI}" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".9"/>
+  <path d="M89 70 Q91 88 88 104" stroke="${HAIR_HI}" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".9"/>
+  <!-- manos: cuchara y pulgar arriba con reloj -->
+  <circle cx="31" cy="96" r="7.5" fill="${SKIN}" stroke="${LINE}" stroke-width="2"/>
+  <circle cx="92" cy="90" r="7.5" fill="${SKIN}" stroke="${LINE}" stroke-width="2"/>
+  <!-- cara -->
+  <ellipse cx="60" cy="59" rx="26" ry="25" fill="${SKIN}" stroke="${LINE}" stroke-width="2.5"/>
+  <circle cx="35" cy="66" r="2" fill="#E0B25A" stroke="#A8782A" stroke-width="1"/><circle cx="85" cy="66" r="2" fill="#E0B25A" stroke="#A8782A" stroke-width="1"/>
+  <!-- cabello superior con raya en medio -->
+  <path d="M33 56 Q33 27 60 26 Q87 27 87 56 Q82 40 63 42 L60 46 L57 42 Q38 40 33 56 Z" fill="${HAIR}" stroke="#120D10" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M60 27 L60 41" stroke="${HAIR_HI}" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M40 38 Q48 31 56 32" stroke="${HAIR_HI}" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M64 32 Q72 31 80 38" stroke="${HAIR_HI}" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- moño rosa -->
+  <g transform="translate(88,34) rotate(15)">
+    <ellipse cx="-7" cy="0" rx="7" ry="4.5" fill="#F26FA3" stroke="#B02B62" stroke-width="2"/><ellipse cx="7" cy="0" rx="7" ry="4.5" fill="#F26FA3" stroke="#B02B62" stroke-width="2"/>
+    <circle r="3" fill="#FFB3D0" stroke="#B02B62" stroke-width="2"/>
+  </g>
+  <!-- cejas, rubor, nariz -->
+  <path d="M42 49 Q49 46 56 49" stroke="#2B2224" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M64 49 Q71 46 78 49" stroke="#2B2224" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <ellipse cx="41" cy="66" rx="5.5" ry="3.2" fill="#F797BC" opacity=".8"/><ellipse cx="79" cy="66" rx="5.5" ry="3.2" fill="#F797BC" opacity=".8"/>
+  <path d="M60 62 Q58.5 66 61.5 66.5" stroke="#D9A08A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  <!-- ojos -->
+  <g class="eyeL"><g class="open"><ellipse cx="49" cy="59.5" rx="3.8" ry="5" fill="#2B1A12"/><circle cx="47.6" cy="57.6" r="1.5" fill="#fff"/></g><path class="happy" d="M44 61 Q49 54.5 54 61" stroke="#2B1A12" stroke-width="2.8" fill="none" stroke-linecap="round"/></g>
+  <g class="eyeR"><g class="open"><ellipse cx="71" cy="59.5" rx="3.8" ry="5" fill="#2B1A12"/><circle cx="69.6" cy="57.6" r="1.5" fill="#fff"/></g><path class="happy" d="M66 61 Q71 54.5 76 61" stroke="#2B1A12" stroke-width="2.8" fill="none" stroke-linecap="round"/></g>
+  <!-- lentes redondos de armazón metálico -->
+  <g fill="#FFFFFF" fill-opacity=".16" stroke="${FRAME}" stroke-width="2.2">
+    <rect x="38.5" y="51" width="21" height="17" rx="8"/><rect x="60.5" y="51" width="21" height="17" rx="8"/>
+  </g>
+  <path d="M59.5 57 Q60 55.5 60.5 57" stroke="${FRAME}" stroke-width="2" fill="none"/>
+  <path d="M38.5 57 L34 55" stroke="${FRAME}" stroke-width="2" stroke-linecap="round"/><path d="M81.5 57 L86 55" stroke="${FRAME}" stroke-width="2" stroke-linecap="round"/>
+  <path d="M42 54.5 Q45 52.5 48 53" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".8"/>
+  <path d="M64 54.5 Q67 52.5 70 53" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".8"/>
+  <!-- boca -->
+  <g class="mouth-smile"><path d="M48 70 Q60 85 72 70 Z" fill="#B02B62"/><path d="M50.5 70.5 L69.5 70.5 Q67 76 60 76.5 Q53 76 50.5 70.5 Z" fill="#FFFFFF"/><path d="M54 79 Q60 82 66 79 Q60 77.5 54 79 Z" fill="#FF8FB4"/></g>
+  <g class="mouth-o"><ellipse cx="60" cy="74" rx="5" ry="6" fill="#B02B62"/><ellipse cx="60" cy="71.5" rx="3" ry="1.5" fill="#fff"/></g>
+</svg>`;
+}
+const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z"/></svg>';
+
+/** Tazón rosa con florecitas. Origen en el centro del borde. */
+function bowlSVG({ rx=135, ry=32, depth=130, batter='url(#gBatter)', batterId='' }={}){
+  const flower = (x,y,s=1) => `<g transform="translate(${x},${y}) scale(${s})" fill="#fff" opacity=".6"><circle cx="0" cy="-7" r="4.5"/><circle cx="6.7" cy="-2.2" r="4.5"/><circle cx="4.1" cy="5.7" r="4.5"/><circle cx="-4.1" cy="5.7" r="4.5"/><circle cx="-6.7" cy="-2.2" r="4.5"/><circle cx="0" cy="0" r="3" fill="#F9A0C2"/></g>`;
+  const k = rx/135;
+  return `
+  <path d="M${-rx} 0 C ${-rx+3} ${depth*.58} ${-rx*.58} ${depth} 0 ${depth} C ${rx*.58} ${depth} ${rx-3} ${depth*.58} ${rx} 0 Z" fill="url(#gBowlSide)" stroke="#B02B62" stroke-width="3"/>
+  <path d="M${-rx+9} 12 C ${-rx+15} ${depth*.5} ${-rx*.62} ${depth*.84} ${-rx*.22} ${depth*.9}" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".42"/>
+  ${flower(-88*k, 64*k, k)}${flower(-30*k, 92*k, k)}${flower(40*k, 90*k, k)}${flower(96*k, 58*k, k)}
+  <ellipse cx="0" cy="0" rx="${rx}" ry="${ry}" fill="url(#gBowlRim)" stroke="#B02B62" stroke-width="3"/>
+  <ellipse cx="0" cy="3" rx="${rx-15}" ry="${ry-8}" fill="#9E2A5E" opacity=".45"/>
+  <ellipse ${batterId ? `id="${batterId}"` : ''} cx="0" cy="4" rx="${rx-18}" ry="${ry-10}" fill="${batter}"/>
+  <ellipse cx="${-rx*.35}" cy="${-ry*.05}" rx="${rx*.22}" ry="${ry*.14}" fill="#fff" opacity=".35"/>`;
+}
+
+/** Silueta del pastel en coordenadas del viewBox 320x260 */
+const CAKE = {
+  lower: { x:50,  y:150, w:220, h:62, r:14 },
+  upper: { x:70,  y:92,  w:180, h:62, r:14 },
+  top:   { cx:160, cy:92, rx:90, ry:16 },
+};
+function inCake(p, pad=0){
+  const r = (o) => p.x >= o.x-pad && p.x <= o.x+o.w+pad && p.y >= o.y-pad && p.y <= o.y+o.h+pad;
+  if(r(CAKE.lower) || r(CAKE.upper)) return true;
+  const dx = (p.x-CAKE.top.cx)/(CAKE.top.rx+pad), dy = (p.y-CAKE.top.cy)/(CAKE.top.ry+pad+6);
+  return dx*dx + dy*dy <= 1;
+}
+function candlePositions(n){
+  const span = Math.min(170, 34*(n-1)), x0 = 160 - span/2;
+  return Array.from({length:n}, (_,i) => {
+    const x = n === 1 ? 160 : x0 + (span/(n-1))*i, dx = (x-160)/90;
+    return { x, y: 92 + 10*(1 - dx*dx) };
+  });
+}
+function scallops(x, y, w, amp, n, fill, stroke){
+  const step = w/n; let d = `M${x} ${y}`;
+  for(let i=0;i<n;i++){ const sx = x + i*step; d += ` Q${sx+step/2} ${y+amp*2} ${sx+step} ${y}`; }
+  return `<path d="${d} Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
+}
+
+/** Pastel completo (vista lateral). opts: {frost, toppings, candles, lit[], out} */
+function cakeSVG(opts={}){
+  const frost = opts.frost ?? state.frosted;
+  const fc = state.frostColor, fd = darken(fc,.3), fl = lighten(fc,.22), fll = lighten(fc,.45);
+  const toppings = opts.toppings ?? state.toppings;
+  const L = CAKE.lower, U = CAKE.upper, T = CAKE.top, id = 'g' + (++uid);
+  let s = `<svg class="scene cake" viewBox="0 0 320 260" aria-label="Pastel">
+  <defs>
+    <linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${fl}"/><stop offset="1" stop-color="${fc}"/></linearGradient>
+    <linearGradient id="${id}t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${fll}"/><stop offset="1" stop-color="${lighten(fc,.1)}"/></linearGradient>
+  </defs>`;
+  s += `<ellipse cx="160" cy="236" rx="150" ry="16" fill="#7A4A2B" opacity=".28" filter="url(#blur4)"/>`;
+  s += `<ellipse cx="160" cy="226" rx="146" ry="20" fill="url(#gPlate)" stroke="#D9C2CC" stroke-width="3"/>`;
+  s += `<ellipse cx="160" cy="223" rx="122" ry="12" fill="#FBEFF3"/>`;
+  s += `<rect x="${L.x}" y="${L.y}" width="${L.w}" height="${L.h}" rx="${L.r}" fill="url(#gSponge)" stroke="#C9953A" stroke-width="3"/>`;
+  s += `<rect x="${L.x+10}" y="${L.y+28}" width="${L.w-20}" height="6" rx="3" fill="#D6A44B" opacity=".7"/>`;
+  s += `<rect x="${U.x}" y="${U.y}" width="${U.w}" height="${U.h}" rx="${U.r}" fill="url(#gSponge)" stroke="#C9953A" stroke-width="3"/>`;
+  s += `<rect x="${U.x+10}" y="${U.y+28}" width="${U.w-20}" height="6" rx="3" fill="#D6A44B" opacity=".7"/>`;
+  s += `<ellipse cx="${T.cx}" cy="${T.cy}" rx="${T.rx}" ry="${T.ry}" fill="#FAE4A8" stroke="#C9953A" stroke-width="3"/>`;
+  if(frost){
+    s += `<g class="frosting">`;
+    s += `<rect x="${L.x}" y="${L.y}" width="${L.w}" height="${L.h}" rx="${L.r}" fill="url(#${id}f)" stroke="${fd}" stroke-width="3"/>`;
+    s += `<rect x="${U.x}" y="${U.y}" width="${U.w}" height="${U.h}" rx="${U.r}" fill="url(#${id}f)" stroke="${fd}" stroke-width="3"/>`;
+    s += `<ellipse cx="${T.cx}" cy="${T.cy}" rx="${T.rx}" ry="${T.ry}" fill="url(#${id}t)" stroke="${fd}" stroke-width="3"/>`;
+    s += scallops(L.x+6, L.y+2, L.w-12, 9, 9, fl, fd);
+    s += scallops(U.x+6, U.y+10, U.w-12, 8, 8, fl, fd);
+    s += `<ellipse cx="${L.x+40}" cy="${L.y+24}" rx="12" ry="4" fill="#fff" opacity=".5"/>`;
+    s += `<ellipse cx="${U.x+36}" cy="${U.y+32}" rx="10" ry="4" fill="#fff" opacity=".5"/>`;
+    s += `<ellipse cx="${T.cx-30}" cy="${T.cy-3}" rx="26" ry="5" fill="#fff" opacity=".4"/>`;
+    s += `</g>`;
+  }
+  s += `<g class="toppings">${toppingsMarkup(toppings)}</g>`;
+  if(opts.candles){
+    const lit = opts.lit || [], out = !!opts.out;
+    s += `<g class="candles">`;
+    candlePositions(opts.candles).forEach((c,i) => {
+      const cls = 'candle' + (out ? ' out' : (lit[i] ? ' lit' : ''));
+      s += `<g class="${cls}" data-i="${i}" transform="translate(${c.x.toFixed(1)},${c.y.toFixed(1)})">`;
+      s += `<rect class="hit" x="-18" y="-72" width="36" height="80"/>`;
+      s += `<rect x="-5.5" y="-36" width="11" height="38" rx="3" fill="url(#gPinkLight)" stroke="#D23A79" stroke-width="2"/>`;
+      s += `<rect x="-5.5" y="-30" width="11" height="5" fill="#F27BAA"/><rect x="-5.5" y="-19" width="11" height="5" fill="#F27BAA"/><rect x="-5.5" y="-8" width="11" height="5" fill="#F27BAA"/>`;
+      s += `<rect x="-3.5" y="-34" width="2" height="33" rx="1" fill="#fff" opacity=".6"/>`;
+      s += `<line x1="0" y1="-36" x2="0" y2="-43" stroke="#4B5563" stroke-width="2" stroke-linecap="round"/>`;
+      s += `<g class="flame"><circle cx="0" cy="-50" r="17" fill="url(#glow)"/>`;
+      s += `<path d="M0 -63 C 7.5 -53 7.5 -45 0 -42 C -7.5 -45 -7.5 -53 0 -63 Z" fill="url(#gFlame)"/>`;
+      s += `<path d="M0 -55 C 3 -50 3 -45.5 0 -44 C -3 -45.5 -3 -50 0 -55 Z" fill="#FFF6C2"/></g>`;
+      s += `<g class="smoke"><circle cx="-2" cy="-50" r="4" fill="#9CA3AF" opacity=".7"/><circle cx="3" cy="-58" r="3" fill="#9CA3AF" opacity=".6"/><circle cx="-1" cy="-66" r="2.5" fill="#9CA3AF" opacity=".5"/></g>`;
+      s += `</g>`;
+    });
+    s += `</g>`;
+  }
+  return s + `</svg>`;
+}
+function toppingsMarkup(list){
+  return list.map((t,i) => `<use href="#t-${t.type}" x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}" class="placed" data-i="${i}"/>`).join('');
+}
+function fitWrap(wrap){
+  const stage = wrap.parentElement, W = stage.clientWidth - 4, H = stage.clientHeight - 4, ratio = 320/260;
+  let w = W, h = w/ratio; if(h > H){ h = H; w = h*ratio; }
+  wrap.style.width = Math.floor(w) + 'px'; wrap.style.height = Math.floor(h) + 'px';
+}
+
+/* =====================================================================
+   Navegación, pistas y calificación
+   ===================================================================== */
+let current = null;
+const Screens = {};
+function show(id){
+  if(current && Screens[current].exit) Screens[current].exit();
+  $$('.screen').forEach(s => s.classList.toggle('active', s.dataset.screen === id));
+  current = id;
+  updateHud();
+  Screens[id].enter();
+}
+function updateHud(){
+  if(current === 'intro'){ $('#top-label').textContent = 'Pastel de cumple'; $('#top-sub').textContent = 'solo para ti'; }
+  else if(current === 'final'){ $('#top-label').textContent = '¡Pastel listo!'; $('#top-sub').textContent = 'Hecho con amor'; }
+  else { $('#top-label').textContent = STEPS[state.step].label; $('#top-sub').textContent = `Paso ${state.step+1} de ${STEPS.length}`; }
+}
+function nextStep(){ state.step++; if(state.step >= STEPS.length) show('final'); else show(STEPS[state.step].id); }
+function say(id, text, mood){
+  const b = $('#'+id+'-bubble'); if(!b) return;
+  b.textContent = text; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+  if(mood) setMood(mood);
+}
+function setMood(mood){
+  const sec = $('.screen.active'); if(!sec) return;
+  const m = $('.mascot', sec); if(m) m.setAttribute('class', 'mascot ' + mood);
+}
+const TITLES = { 3:'¡Perfecto!', 2:'¡Muy bien!', 1:'¡Bien!' };
+function completeStep(stars, line){
+  stars = clamp(stars,1,3);
+  state.stars[state.step] = stars;
+  $('#fb-title').textContent = TITLES[stars];
+  $('#fb-line').textContent = line;
+  $('#fb-mascot').innerHTML = mascotSVG(stars === 3 ? 'm-cheer' : stars === 2 ? 'm-wink' : 'm-wow');
+  $('#fb-mascot').classList.toggle('cheer', stars === 3);
+  $('#fb-stars').innerHTML = STAR + STAR + STAR;
+  $$('#fb-stars svg').forEach((el,i) => { if(i < stars) el.classList.add('on'); });
+  $('#feedback').classList.add('show');
+  Sound.success(); buzz(stars === 3 ? [40,60,40] : 40);
+  setTimeout(() => { $$('#fb-stars svg.on').forEach((el,i) => setTimeout(() => sparkle(centerOf(el).x, centerOf(el).y, 8), i*150)); }, 120);
+  setTimeout(() => $('#fb-next').focus(), 50);
+}
+$('#fb-next').addEventListener('click', () => { $('#feedback').classList.remove('show'); Sound.pop(); nextStep(); });
+
+/** Botón de mantener presionado (verter, soplar) */
+function holdButton(btn, { onStart, onEnd }){
+  let active = false;
+  const start = (e) => { if(btn.disabled || active) return; active = true; btn.classList.add('pressed'); try{ btn.setPointerCapture(e.pointerId); }catch(_){} onStart(e); };
+  const end = () => { if(!active) return; active = false; btn.classList.remove('pressed'); onEnd(); };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', end); btn.addEventListener('pointercancel', end); btn.addEventListener('lostpointercapture', end);
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+  btn.addEventListener('keydown', e => { if((e.key === ' ' || e.key === 'Enter') && !active){ e.preventDefault(); active = true; btn.classList.add('pressed'); onStart(e); } });
+  btn.addEventListener('keyup', e => { if(e.key === ' ' || e.key === 'Enter') end(); });
+}
+
+/* Botones "atrás" (repetir paso) y "pista" (la chef repite la instrucción) */
+$$('[data-back]').forEach(b => b.addEventListener('click', () => { Sound.tick(); buzz(10); show(current); }));
+$$('[data-hint]').forEach(b => b.addEventListener('click', () => {
+  Sound.pop(); const st = STEPS[state.step]; if(!st) return;
+  say(st.id, st.hint, 'm-wink'); const c = centerOf(b); sparkle(c.x, c.y, 6);
+}));
+
+/* =====================================================================
+   PORTADA
+   ===================================================================== */
+Screens.intro = {
+  enter(){
+    state.step = -1; state.stars = []; state.frosted = false; state.toppings = []; state.lit = [];
+    state.frostColor = '#F9A8D4'; state.frostName = 'fresa';
+    $('#intro-title').innerHTML = `Un pastel<small>para ${CONFIG.nombre}</small>`;
+    updateHud();
+  }
+};
+$('#btn-start').addEventListener('click', () => { Sound.unlock(); Sound.pop(); buzz(20); state.step = 0; show('mezclar'); });
+
+/* =====================================================================
+   1. MEZCLAR — círculos con el dedo (o toques en "Mezclar")
+   ===================================================================== */
+Screens.mezclar = (() => {
+  const stage = $('#mezclar-stage'), btn = $('#btn-mix');
+  const CX = 160, CY = 178, TURNS = 6;
+  let svg, whisk, batter, lumps, swirl, motion, acc = 0, lastA = null, down = false, done = false, t0 = 0, lastHint = 0;
+
+  function build(){
+    stage.innerHTML = `<svg class="scene" viewBox="0 0 320 330" aria-label="Tazón con mezcla">
+      <ellipse cx="160" cy="312" rx="140" ry="14" fill="#7A4A2B" opacity=".3" filter="url(#blur4)"/>
+      <g class="motion" id="mix-motion" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity="0">
+        <path d="M18 150 Q8 190 22 230"/><path d="M302 150 Q312 190 298 230"/>
+      </g>
+      <g transform="translate(${CX},${CY})">
+        ${bowlSVG({ batter:'url(#gFlour)', batterId:'batter' })}
+        <g id="lumps" fill="#fff" opacity="1"><circle cx="-60" cy="2" r="7"/><circle cx="-20" cy="-6" r="5"/><circle cx="30" cy="8" r="6"/><circle cx="70" cy="-2" r="5"/><circle cx="0" cy="12" r="4"/><circle cx="-85" cy="8" r="4"/><circle cx="50" cy="-8" r="4"/></g>
+        <g id="swirl" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity="0">
+          <ellipse cx="0" cy="4" rx="80" ry="12" stroke-dasharray="26 18"/><ellipse cx="0" cy="4" rx="48" ry="7" stroke-dasharray="18 14"/>
+        </g>
+      </g>
+      <g id="whisk" class="whisk" transform="translate(${CX},${CY})">
+        <ellipse cx="0" cy="-32" rx="19" ry="38" fill="none" stroke="url(#gSteelV)" stroke-width="3.5"/>
+        <ellipse cx="0" cy="-32" rx="19" ry="38" fill="none" stroke="url(#gSteelV)" stroke-width="3.5" transform="rotate(32 0 -32)"/>
+        <ellipse cx="0" cy="-32" rx="19" ry="38" fill="none" stroke="url(#gSteelV)" stroke-width="3.5" transform="rotate(-32 0 -32)"/>
+        <rect x="-8" y="-172" width="16" height="106" rx="8" fill="url(#gPinkV)" stroke="#B02B62" stroke-width="2"/>
+        <rect x="-5" y="-166" width="3.5" height="80" rx="1.75" fill="#fff" opacity=".55"/>
+        <circle cx="0" cy="-164" r="3.2" fill="#B02B62"/>
+      </g>
+    </svg>`;
+    svg = $('svg', stage); whisk = $('#whisk'); batter = $('#batter'); lumps = $('#lumps'); swirl = $('#swirl'); motion = $('#mix-motion');
+  }
+  function progress(){ return clamp(acc/(Math.PI*2*TURNS), 0, 1); }
+  function render(){
+    const p = progress();
+    $('#mezclar-bar').style.width = (p*100) + '%';
+    $('#mezclar-val').textContent = Math.round(p*100) + '%';
+    batter.setAttribute('fill', p < 0.5 ? 'url(#gFlour)' : 'url(#gBatter)');
+    batter.setAttribute('opacity', String(0.75 + 0.25*p));
+    lumps.setAttribute('opacity', String(1 - p));
+    swirl.setAttribute('opacity', String(p*0.8));
+    motion.classList.toggle('on', down && p < 1);
+    if(p >= 0.5 && lastHint < 1){ lastHint = 1; say('mezclar', '¡Así se hace! Sigue batiendo.', 'm-wink'); }
+    if(p >= 0.8 && lastHint < 2){ lastHint = 2; say('mezclar', '¡Ya casi queda cremosita!', 'm-cheer'); }
+    return p;
+  }
+  function moveWhisk(p){
+    let dx = p.x - CX, dy = p.y - CY;
+    const nx = dx/135, ny = dy/32, len = Math.hypot(nx, ny);
+    if(len > 0.82){ dx *= 0.82/len; dy *= 0.82/len; }
+    whisk.setAttribute('transform', `translate(${(CX+dx).toFixed(1)},${(CY+dy).toFixed(1)}) rotate(${(dx/135*14).toFixed(1)})`);
+  }
+  function addAngle(d){
+    acc += Math.abs(d);
+    $$('#swirl ellipse').forEach((el,i) => el.setAttribute('stroke-dashoffset', (-acc*(18 - i*6)).toFixed(1)));
+    if(render() >= 1) finish();
+  }
+  function onDown(e){ if(done) return; down = true; lastA = null; if(!t0) t0 = performance.now(); try{ stage.setPointerCapture(e.pointerId); }catch(_){} onMove(e); }
+  function onMove(e){
+    if(!down || done) return;
+    const p = svgPoint(svg, e); moveWhisk(p);
+    const a = Math.atan2(p.y - CY, (p.x - CX)/4.2);
+    if(lastA !== null){ let d = a - lastA; if(d > Math.PI) d -= Math.PI*2; if(d < -Math.PI) d += Math.PI*2; addAngle(d); if(Math.random() < 0.08) Sound.stir(); }
+    lastA = a;
+  }
+  function onUp(){ down = false; lastA = null; if(motion) motion.classList.remove('on'); }
+  function onTap(){
+    if(done) return; if(!t0) t0 = performance.now();
+    whisk.classList.remove('shake'); void whisk.getBoundingClientRect(); whisk.classList.add('shake');
+    Sound.stir(); buzz(8); addAngle(Math.PI*2*TURNS/14);
+  }
+  function finish(){
+    done = true; down = false; motion.classList.remove('on');
+    const secs = (performance.now() - t0)/1000, stars = secs < 9 ? 3 : secs < 18 ? 2 : 1;
+    Sound.splash(); const c = centerOf(stage); sparkle(c.x, c.y - 40, 14); floatText(c.x, c.y - 60, '¡Cremosa!');
+    setTimeout(() => completeStep(stars, stars === 3 ? '¡Qué brazo! La mezcla quedó suave como nube.' : stars === 2 ? 'Mezcla cremosa y sin grumos. ¡Buen ritmo!' : 'Quedó rica. La práctica hace a la chef.'), 500);
+  }
+  btn.addEventListener('click', onTap);
+  return {
+    enter(){
+      acc = 0; lastA = null; down = false; done = false; t0 = 0; lastHint = 0;
+      build(); render(); say('mezclar', STEPS[0].hint, 'm-wink');
+      stage.addEventListener('pointerdown', onDown); stage.addEventListener('pointermove', onMove);
+      stage.addEventListener('pointerup', onUp); stage.addEventListener('pointercancel', onUp);
+    },
+    exit(){
+      stage.removeEventListener('pointerdown', onDown); stage.removeEventListener('pointermove', onMove);
+      stage.removeEventListener('pointerup', onUp); stage.removeEventListener('pointercancel', onUp);
+    }
+  };
+})();
+
+/* =====================================================================
+   2. HUEVOS — toca dos veces cada huevo
+   ===================================================================== */
+Screens.huevos = (() => {
+  const stage = $('#huevos-stage'), btn = $('#btn-crack');
+  const POS = [[72,112],[160,86],[248,112]];
+  let taps = [], broken = 0, misses = 0, busy = false, yolksG;
+
+  function eggMarkup(i){
+    const [x,y] = POS[i];
+    return `<g class="egg" data-i="${i}" transform="translate(${x},${y})">
+      <ellipse class="hit" cx="0" cy="0" rx="42" ry="50" fill="transparent"/>
+      <ellipse cx="2" cy="40" rx="26" ry="6" fill="#7A4A2B" opacity=".25" filter="url(#blur4)"/>
+      <g class="half top"><path d="M-30 0 A30 38 0 0 1 30 0 L22 6 L14 -2 L6 7 L-3 -1 L-12 6 L-21 -2 Z" fill="url(#gEgg)" stroke="#D9BE98" stroke-width="2.5" stroke-linejoin="round"/></g>
+      <g class="half bottom"><path d="M-30 0 L-21 -2 L-12 6 L-3 -1 L6 7 L14 -2 L22 6 L30 0 A30 38 0 0 1 -30 0 Z" fill="url(#gEgg)" stroke="#D9BE98" stroke-width="2.5" stroke-linejoin="round"/></g>
+      <circle class="yolk" cx="0" cy="0" r="12" fill="url(#gYolk)" stroke="#E08A0C" stroke-width="2"/>
+      <ellipse class="shell" cx="0" cy="0" rx="30" ry="38" fill="url(#gEgg)" stroke="#D9BE98" stroke-width="2.5"/>
+      <ellipse class="shine" cx="-10" cy="-16" rx="6" ry="9" fill="#fff" opacity=".75"/>
+      <polyline class="crack" points="-8,-24 2,-12 -8,-2 4,8 -4,20" fill="none" stroke="#B08A5E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>`;
+  }
+  function build(){
+    stage.innerHTML = `<svg class="scene" viewBox="0 0 320 330" aria-label="Huevos y tazón">
+      <ellipse cx="160" cy="318" rx="110" ry="12" fill="#7A4A2B" opacity=".3" filter="url(#blur4)"/>
+      <g transform="translate(160,228)">${bowlSVG({ rx:100, ry:24, depth:92 })}<g id="yolks-in-bowl"></g></g>
+      <g id="eggs">${[0,1,2].map(eggMarkup).join('')}</g>
+    </svg>`;
+    yolksG = $('#yolks-in-bowl');
+  }
+  function render(){ $('#huevos-bar').style.width = (broken/3*100)+'%'; $('#huevos-val').textContent = `${broken}/3`; }
+  function tapEgg(egg, pt){
+    const i = +egg.dataset.i; if(taps[i] >= 2) return;
+    taps[i]++;
+    if(taps[i] === 1){ egg.classList.add('cracked'); Sound.crack(); buzz(15); say('huevos', '¡Crac! Una vez más.', 'm-wow'); }
+    else {
+      egg.classList.remove('cracked'); egg.classList.add('broken');
+      Sound.crack(); buzz([20,30,20]); if(pt){ sparkle(pt.x, pt.y, 8); floatText(pt.x, pt.y - 20, '¡Crac!'); }
+      broken++; render();
+      setTimeout(() => { Sound.splash(); yolksG.insertAdjacentHTML('beforeend', `<ellipse cx="${(POS[i][0]-160)*0.5}" cy="4" rx="20" ry="8" fill="url(#gYolk)" stroke="#E08A0C" stroke-width="2"/>`); }, 650);
+      say('huevos', broken < 3 ? `¡Al tazón! Faltan ${3-broken}.` : '¡Los tres adentro!', broken < 3 ? 'm-wink' : 'm-cheer');
+      if(broken === 3){
+        busy = true;
+        const stars = misses === 0 ? 3 : misses <= 2 ? 2 : 1;
+        setTimeout(() => completeStep(stars, stars === 3 ? 'Ni una cáscara en la mezcla. ¡Manos de chef!' : stars === 2 ? 'Huevos rotos con estilo. ¡Casi perfecto!' : 'Huevos adentro, eso es lo que cuenta.'), 1000);
+      }
+    }
+  }
+  function onDown(e){
+    if(busy) return;
+    const egg = e.target.closest('.egg');
+    if(!egg){ misses++; return; }
+    tapEgg(egg, { x:e.clientX, y:e.clientY });
+  }
+  function onBtn(){
+    if(busy) return;
+    const egg = $$('.egg', stage).find(el => taps[+el.dataset.i] < 2); if(!egg) return;
+    tapEgg(egg, centerOf($('.shell', egg)));
+  }
+  btn.addEventListener('click', onBtn);
+  return {
+    enter(){
+      taps = [0,0,0]; broken = 0; misses = 0; busy = false;
+      build(); render(); say('huevos', STEPS[1].hint, 'm-wink');
+      stage.addEventListener('pointerdown', onDown);
+    },
+    exit(){ stage.removeEventListener('pointerdown', onDown); }
+  };
+})();
+
+/* =====================================================================
+   3. VERTER — mantener y soltar en la zona
+   ===================================================================== */
+Screens.verter = (() => {
+  const stage = $('#verter-stage'), btn = $('#btn-pour');
+  const H = 85, BOTTOM = 262, ZMIN = 0.70, ZMAX = 0.85, SPEED = 0.28;
+  let stream, level, text, spill, lvl = 0, pouring = false, raf = 0, last = 0, resets = 0, done = false;
+
+  function build(){
+    const zy1 = BOTTOM - ZMAX*H, zh = (ZMAX-ZMIN)*H, zy2 = BOTTOM - ZMIN*H;
+    stage.innerHTML = `<svg class="scene" viewBox="0 0 320 300" aria-label="Vertiendo la mezcla en el molde">
+      <ellipse cx="160" cy="272" rx="90" ry="10" fill="#7A4A2B" opacity=".3" filter="url(#blur4)"/>
+      <rect class="stream" id="stream" x="152" y="100" width="16" height="80" rx="8" fill="url(#gBatter)"/>
+      <g transform="translate(205,58) rotate(-48) scale(.6)">${bowlSVG({ batter:'url(#gBatter)' })}</g>
+      <defs><clipPath id="moldClip"><path d="M92 177 L228 177 L220 262 L100 262 Z"/></clipPath></defs>
+      <path d="M92 177 L228 177 L220 262 L100 262 Z" fill="url(#gSteel)" stroke="#5B6470" stroke-width="3"/>
+      <rect id="level" x="92" y="262" width="136" height="0" fill="url(#gBatter)" clip-path="url(#moldClip)"/>
+      <g clip-path="url(#moldClip)">
+        <rect x="92" y="${zy1}" width="136" height="${zh}" fill="#22C55E" opacity=".32"/>
+        <line x1="92" x2="228" y1="${zy1}" y2="${zy1}" stroke="#16A34A" stroke-width="2.5" stroke-dasharray="6 4"/>
+        <line x1="92" x2="228" y1="${zy2}" y2="${zy2}" stroke="#16A34A" stroke-width="2.5" stroke-dasharray="6 4"/>
+      </g>
+      <path d="M92 177 L228 177 L220 262 L100 262 Z" fill="none" stroke="#5B6470" stroke-width="3"/>
+      <path d="M104 186 L108 252" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".5"/>
+      <rect x="84" y="171" width="152" height="12" rx="6" fill="url(#gSteelV)" stroke="#5B6470" stroke-width="3"/>
+      <g class="spill" id="spill"><ellipse cx="160" cy="268" rx="90" ry="9" fill="#F3D27C"/><ellipse cx="236" cy="258" rx="12" ry="5" fill="#F3D27C"/></g>
+      <text id="level-text" x="160" y="228" text-anchor="middle" font-family="Fredoka, Nunito, sans-serif" font-weight="700" font-size="26" fill="#7E3A2C" stroke="#fff" stroke-width="5" paint-order="stroke">0%</text>
+    </svg>`;
+    stream = $('#stream'); level = $('#level'); text = $('#level-text'); spill = $('#spill');
+  }
+  function render(){
+    const h = lvl*H;
+    level.setAttribute('y', (BOTTOM - h).toFixed(1)); level.setAttribute('height', h.toFixed(1));
+    text.textContent = Math.round(lvl*100) + '%';
+    $('#verter-bar').style.width = (lvl*100)+'%'; $('#verter-val').textContent = Math.round(lvl*100) + '%';
+  }
+  function loop(ts){
+    if(!pouring) return;
+    if(last) lvl = Math.min(1, lvl + SPEED*(ts-last)/1000);
+    last = ts; render();
+    if(lvl >= 1){ overflow(); return; }
+    raf = requestAnimationFrame(loop);
+  }
+  function start(){ if(done) return; pouring = true; last = 0; stream.classList.add('on'); raf = requestAnimationFrame(loop); }
+  function stop(){
+    if(!pouring || done) return;
+    pouring = false; cancelAnimationFrame(raf); stream.classList.remove('on');
+    if(lvl >= ZMIN && lvl <= ZMAX){
+      done = true; Sound.splash(); buzz(30);
+      const c = centerOf(stage); sparkle(c.x, c.y, 12); floatText(c.x, c.y - 40, '¡Justo!');
+      const dist = Math.abs(lvl - (ZMIN+ZMAX)/2);
+      const stars = resets === 0 && dist <= 0.035 ? 3 : resets <= 1 ? 2 : 1;
+      setTimeout(() => completeStep(stars, stars === 3 ? 'Ni una gota de más. ¡Pulso de cirujana!' : stars === 2 ? 'Cantidad perfecta para que esponje.' : 'Ya está en el molde, ¡vamos bien!'), 400);
+    } else if(lvl < ZMIN){
+      say('verter', 'Le falta un poquito. Mantén presionado otra vez.', 'm-wink');
+    } else overflow();
+  }
+  function overflow(){
+    pouring = false; cancelAnimationFrame(raf); stream.classList.remove('on');
+    spill.classList.add('on'); Sound.fail(); buzz([40,40,40]); resets++; btn.disabled = true;
+    say('verter', '¡Uy, se desbordó! No pasa nada, limpiamos y de nuevo.', 'm-wow');
+    setTimeout(() => { lvl = 0; render(); spill.classList.remove('on'); btn.disabled = false; }, 1100);
+  }
+  holdButton(btn, { onStart: start, onEnd: stop });
+  return {
+    enter(){
+      lvl = 0; pouring = false; resets = 0; done = false; btn.disabled = false;
+      build(); render(); say('verter', STEPS[2].hint, 'm-wink');
+    },
+    exit(){ cancelAnimationFrame(raf); pouring = false; }
+  };
+})();
+
+/* =====================================================================
+   4. HORNEAR — tiempo justo
+   ===================================================================== */
+Screens.hornear = (() => {
+  const stage = $('#hornear-stage'), marker = $('#marker'), gauge = $('.gauge'), btn = $('#btn-bake');
+  const DUR = 4800, ZMIN = 0.55, ZMAX = 0.72;
+  let bake, glow, light, t = 0, start = 0, raf = 0, running = false, attempts = 0, done = false;
+
+  function build(){
+    stage.innerHTML = `<svg class="scene" viewBox="0 0 320 310" aria-label="Horno">
+      <ellipse cx="160" cy="292" rx="140" ry="12" fill="#7A4A2B" opacity=".3" filter="url(#blur4)"/>
+      <rect x="30" y="28" width="260" height="250" rx="26" fill="url(#gPinkLight)" stroke="#D23A79" stroke-width="3"/>
+      <path d="M30 54 Q30 28 56 28 L264 28 Q290 28 290 54 L290 84 L30 84 Z" fill="#F9A0C2" stroke="#D23A79" stroke-width="3"/>
+      <rect x="44" y="34" width="232" height="8" rx="4" fill="#fff" opacity=".45"/>
+      ${[70,104,138].map((x,i) => `<circle cx="${x}" cy="58" r="11" fill="url(#gPlate)" stroke="#D23A79" stroke-width="3"/><line x1="${x}" y1="58" x2="${x + [0,7,-6][i]}" y2="${58 + [-8,-4,-6][i]}" stroke="#D23A79" stroke-width="3" stroke-linecap="round"/>`).join('')}
+      <circle id="oven-light" cx="250" cy="58" r="8" fill="#FB7185" stroke="#D23A79" stroke-width="2"/>
+      <rect x="56" y="98" width="208" height="150" rx="20" fill="url(#gSteelV)" stroke="#5B6470" stroke-width="3"/>
+      <rect x="66" y="108" width="188" height="130" rx="14" fill="#3B1C2A" stroke="#1F0E16" stroke-width="3"/>
+      <ellipse id="heat-glow" cx="160" cy="236" rx="100" ry="40" fill="url(#heat)" opacity=".25"/>
+      <line x1="80" y1="206" x2="240" y2="206" stroke="#9CA3AF" stroke-width="4" stroke-linecap="round"/>
+      <path d="M112 184 L208 184 L202 232 L118 232 Z" fill="url(#gSteel)" stroke="#5B6470" stroke-width="2"/>
+      <rect id="bake" x="116" y="178" width="88" height="54" rx="14" fill="#FBE7B2"/>
+      <path d="M112 198 L208 198 L202 232 L118 232 Z" fill="#9AA1AB" stroke="#5B6470" stroke-width="2"/>
+      <rect x="74" y="114" width="172" height="52" rx="10" fill="#fff" opacity=".07"/>
+      <rect x="56" y="256" width="208" height="12" rx="6" fill="url(#gSteelV)" stroke="#5B6470" stroke-width="2.5"/>
+    </svg>`;
+    bake = $('#bake'); glow = $('#heat-glow'); light = $('#oven-light');
+  }
+  function color(t){ return t < 0.63 ? mix('#FBE7B2', '#E8A33C', t/0.63) : mix('#E8A33C', '#4A2410', (t-0.63)/0.37); }
+  function render(){
+    marker.style.transform = `translateX(${(t*gauge.clientWidth).toFixed(1)}px)`;
+    const h = 20 + 40*Math.min(1, t*1.5);
+    bake.setAttribute('y', (232 - h).toFixed(1)); bake.setAttribute('height', h.toFixed(1)); bake.setAttribute('fill', color(t));
+    glow.setAttribute('opacity', (0.25 + 0.6*t).toFixed(2));
+    light.setAttribute('fill', t >= ZMIN && t <= ZMAX ? '#22C55E' : '#FB7185');
+  }
+  function loop(ts){ if(!running) return; t = Math.min(1, (ts - start)/DUR); render(); if(t >= 1){ burnt(); return; } raf = requestAnimationFrame(loop); }
+  function run(){ running = true; start = performance.now(); raf = requestAnimationFrame(loop); }
+  function burnt(){
+    running = false; attempts++; Sound.fail(); buzz([40,40,40]); btn.disabled = true;
+    say('hornear', '¡Se tostó de más! Raspamos la orillita y va de nuevo.', 'm-wow');
+    setTimeout(() => { btn.disabled = false; t = 0; render(); run(); }, 1300);
+  }
+  function onTap(){
+    if(!running || done) return;
+    if(t < ZMIN){ attempts++; Sound.fail(); buzz(30); say('hornear', 'Todavía está crudito. Espera la zona dorada.', 'm-wow'); return; }
+    running = false; cancelAnimationFrame(raf); done = true; Sound.splash(); buzz(30);
+    const c = centerOf(stage); sparkle(c.x, c.y, 12); floatText(c.x, c.y - 40, '¡Dorado!');
+    const dist = Math.abs(t - (ZMIN+ZMAX)/2), stars = attempts === 0 && dist <= 0.03 ? 3 : attempts <= 1 ? 2 : 1;
+    setTimeout(() => completeStep(stars, stars === 3 ? '¡Doradito perfecto! Hasta huele a domingo.' : stars === 2 ? 'Bien horneado, esponjoso por dentro.' : 'Un poquito irregular, pero sabroso.'), 400);
+  }
+  btn.addEventListener('click', onTap);
+  return {
+    enter(){ t = 0; attempts = 0; done = false; running = false; btn.disabled = false; build(); render(); say('hornear', STEPS[3].hint, 'm-wink'); setTimeout(run, 600); },
+    exit(){ running = false; cancelAnimationFrame(raf); }
+  };
+})();
+
+/* =====================================================================
+   5. CUBRIR — pintar betún con el dedo (canvas)
+   ===================================================================== */
+Screens.cubrir = (() => {
+  const stage = $('#cubrir-stage'), wrap = $('#cubrir-wrap'), btn = $('#btn-spread');
+  let canvas, ctx, scale = 1, dpr = 1, drawing = false, lastP = null, samples = [], region = null, coverage = 0, done = false, t0 = 0, lastCheck = 0, chosen = false, SIL = null;
+
+  function rr(p, x, y, w, h, r){
+    p.moveTo(x+r, y); p.lineTo(x+w-r, y); p.arcTo(x+w, y, x+w, y+r, r); p.lineTo(x+w, y+h-r); p.arcTo(x+w, y+h, x+w-r, y+h, r);
+    p.lineTo(x+r, y+h); p.arcTo(x, y+h, x, y+h-r, r); p.lineTo(x, y+r); p.arcTo(x, y, x+r, y, r); p.closePath();
+  }
+  function silhouette(){
+    const p = new Path2D(), L = CAKE.lower, U = CAKE.upper, T = CAKE.top;
+    rr(p, L.x, L.y, L.w, L.h, L.r); rr(p, U.x, U.y, U.w, U.h, U.r);
+    p.moveTo(T.cx + T.rx, T.cy); p.ellipse(T.cx, T.cy, T.rx, T.ry, 0, 0, Math.PI*2);
+    return p;
+  }
+  function build(){
+    wrap.innerHTML = cakeSVG({ frost:false, toppings:[] }) + '<canvas></canvas>';
+    canvas = $('canvas', wrap); ctx = canvas.getContext('2d', { willReadFrequently:true });
+    resize();
+  }
+  function resize(){
+    fitWrap(wrap);
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = wrap.clientWidth, h = wrap.clientHeight; scale = w/320;
+    let snap = null; if(t0 && canvas.width && canvas.height){ snap = document.createElement('canvas'); snap.width = canvas.width; snap.height = canvas.height; snap.getContext('2d').drawImage(canvas,0,0); }
+    canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr);
+    if(snap) ctx.drawImage(snap, 0, 0, canvas.width, canvas.height);
+    ctx.setTransform(dpr*scale, 0, 0, dpr*scale, 0, 0);
+    SIL = silhouette(); samples = [];
+    for(let y = 80; y <= 214; y += 5) for(let x = 48; x <= 272; x += 5){
+      const px = Math.round(x*scale*dpr), py = Math.round(y*scale*dpr);
+      if(ctx.isPointInPath(SIL, px, py)) samples.push([px, py]);
+    }
+    region = { x: Math.floor(44*scale*dpr), y: Math.floor(76*scale*dpr), w: Math.ceil(232*scale*dpr), h: Math.ceil(142*scale*dpr) };
+  }
+  function toLocal(e){ const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left)/scale, y: (e.clientY - r.top)/scale }; }
+  function stroke(a, b){
+    ctx.save(); ctx.clip(SIL);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 34; ctx.strokeStyle = state.frostColor;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.lineWidth = 10; ctx.strokeStyle = 'rgba(255,255,255,.22)';
+    ctx.beginPath(); ctx.moveTo(a.x, a.y - 8); ctx.lineTo(b.x, b.y - 8); ctx.stroke();
+    ctx.restore();
+  }
+  function check(){
+    if(!samples.length || !region) return;
+    const img = ctx.getImageData(region.x, region.y, region.w, region.h).data, W = region.w;
+    let hit = 0;
+    for(const [x,y] of samples){ if(img[((y - region.y)*W + (x - region.x))*4 + 3] > 40) hit++; }
+    coverage = hit/samples.length;
+    const p = Math.min(1, coverage/0.92);
+    $('#cubrir-bar').style.width = (p*100)+'%'; $('#cubrir-val').textContent = Math.round(p*100) + '%';
+    if(coverage >= 0.92 && !done) finish();
+  }
+  function finish(){
+    done = true; drawing = false;
+    ctx.save(); ctx.fillStyle = state.frostColor; ctx.fill(SIL); ctx.restore();
+    state.frosted = true;
+    const secs = (performance.now() - t0)/1000, stars = secs < 10 ? 3 : secs < 20 ? 2 : 1;
+    Sound.splash(); buzz(30); const c = centerOf(stage); sparkle(c.x, c.y, 14); floatText(c.x, c.y - 50, '¡Lisito!');
+    setTimeout(() => { wrap.innerHTML = cakeSVG({ toppings:[] }); fitWrap(wrap); }, 200);
+    setTimeout(() => completeStep(stars, stars === 3 ? '¡Lisito como pista de hielo! Betún de ' + state.frostName + ' impecable.' : stars === 2 ? 'Cubierto parejito. ¡Se ve delicioso!' : 'Betún rústico, con mucho cariño.'), 600);
+  }
+  function needFlavor(){ say('cubrir', 'Primero elige un sabor de betún arriba.', 'm-wow'); $('#chips').classList.add('pulse'); }
+  function onDown(e){
+    if(done || !ctx) return;
+    if(!chosen){ needFlavor(); return; }
+    drawing = true; if(!t0) t0 = performance.now();
+    try{ stage.setPointerCapture(e.pointerId); }catch(_){}
+    lastP = toLocal(e); stroke(lastP, lastP);
+  }
+  function onMove(e){
+    if(!drawing || done) return;
+    const p = toLocal(e); stroke(lastP, p); lastP = p;
+    const now = performance.now(); if(now - lastCheck > 140){ lastCheck = now; check(); }
+  }
+  function onUp(){ if(!drawing) return; drawing = false; check(); }
+  function onBtn(){
+    if(done || !ctx) return; if(!chosen){ needFlavor(); return; }
+    if(!t0) t0 = performance.now();
+    for(let i=0;i<2;i++){ const y = 84 + Math.random()*126, x0 = 44 + Math.random()*40; stroke({x:x0, y}, {x:x0 + 120 + Math.random()*120, y: y + (Math.random()*16-8)}); }
+    Sound.stir(); buzz(8); check();
+  }
+  function onChip(e){
+    const chip = e.target.closest('.chip'); if(!chip || done) return;
+    $$('.chip').forEach(c => c.classList.toggle('sel', c === chip)); $('#chips').classList.remove('pulse');
+    state.frostColor = chip.dataset.color; state.frostName = chip.dataset.name; chosen = true; Sound.pop(); buzz(15);
+    if(ctx){ ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalCompositeOperation = 'source-in'; ctx.fillStyle = state.frostColor; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.restore(); }
+    say('cubrir', `Betún de ${state.frostName}. Ahora desliza el dedo sobre el pastel.`, 'm-wink');
+  }
+  const onResize = () => { if(current === 'cubrir' && !done) resize(); };
+  btn.addEventListener('click', onBtn);
+  return {
+    enter(){
+      done = false; drawing = false; coverage = 0; t0 = 0; lastCheck = 0; chosen = false; ctx = null;
+      $$('.chip').forEach(c => c.classList.remove('sel')); $('#chips').classList.remove('pulse');
+      $('#cubrir-bar').style.width = '0%'; $('#cubrir-val').textContent = '0%';
+      build(); say('cubrir', STEPS[4].hint, 'm-wink');
+      stage.addEventListener('pointerdown', onDown); stage.addEventListener('pointermove', onMove);
+      stage.addEventListener('pointerup', onUp); stage.addEventListener('pointercancel', onUp);
+      $('#chips').addEventListener('click', onChip); window.addEventListener('resize', onResize);
+    },
+    exit(){
+      stage.removeEventListener('pointerdown', onDown); stage.removeEventListener('pointermove', onMove);
+      stage.removeEventListener('pointerup', onUp); stage.removeEventListener('pointercancel', onUp);
+      $('#chips').removeEventListener('click', onChip); window.removeEventListener('resize', onResize);
+    }
+  };
+})();
+
+/* =====================================================================
+   6. DECORAR — arrastrar decoraciones
+   ===================================================================== */
+Screens.decorar = (() => {
+  const wrap = $('#decorar-wrap'), tray = $('#tray'), ghost = $('#ghost'), btn = $('#btn-decor-done');
+  const MIN = 6;
+  let dragType = null, svg = null, done = false;
+
+  function renderToppings(){
+    $('.toppings', svg).innerHTML = toppingsMarkup(state.toppings);
+    const n = state.toppings.length;
+    btn.disabled = n < MIN;
+    $('#decor-count').textContent = n < MIN ? `Coloca ${MIN - n} más` : `¡Listo! (${n})`;
+  }
+  function moveGhost(e){ ghost.style.transform = `translate(${e.clientX - 30}px, ${e.clientY - 30}px) scale(1.2)`; }
+  function onTrayDown(e){
+    const item = e.target.closest('.tray-item'); if(!item || done) return;
+    dragType = item.dataset.type;
+    ghost.innerHTML = `<svg viewBox="-20 -20 40 40"><use href="#t-${dragType}"/></svg>`;
+    ghost.classList.add('on'); moveGhost(e);
+    try{ item.setPointerCapture(e.pointerId); }catch(_){}
+    Sound.tick();
+  }
+  function onTrayMove(e){ if(dragType) moveGhost(e); }
+  function onTrayUp(e){
+    if(!dragType) return;
+    const type = dragType; dragType = null; ghost.classList.remove('on');
+    const p = svgPoint(svg, e);
+    if(inCake(p, 10)){
+      const x = clamp(p.x, CAKE.lower.x + 8, CAKE.lower.x + CAKE.lower.w - 8);
+      const y = clamp(p.y, CAKE.top.cy - 22, CAKE.lower.y + CAKE.lower.h - 4);
+      state.toppings.push({ type, x, y }); renderToppings(); Sound.pop(); buzz(15); sparkle(e.clientX, e.clientY, 8);
+      const n = state.toppings.length;
+      if(n === 1) say('decorar', '¡Qué bonito! Sigue, el pastel es tuyo.', 'm-wink');
+      if(n === MIN){ say('decorar', 'Ya puedes terminar, o sigue decorando a tu gusto.', 'm-cheer'); floatText(e.clientX, e.clientY - 20, '¡Genial!'); }
+    } else Sound.fail();
+  }
+  function onCakeDown(e){
+    const u = e.target.closest('use.placed'); if(!u || done) return;
+    state.toppings.splice(+u.dataset.i, 1); renderToppings(); Sound.tick(); buzz(10);
+  }
+  function onDone(){
+    if(done) return; done = true;
+    const types = new Set(state.toppings.map(t => t.type)).size, stars = types >= 3 ? 3 : 2;
+    Sound.splash(); buzz(30); const c = centerOf(wrap); sparkle(c.x, c.y, 16);
+    setTimeout(() => completeStep(stars, stars === 3 ? '¡Qué arte! Parece de vitrina de pastelería.' : '¡Precioso! Sencillo y con estilo.'), 350);
+  }
+  const onResize = () => { if(current === 'decorar') fitWrap(wrap); };
+  btn.addEventListener('click', onDone);
+  return {
+    enter(){
+      done = false; dragType = null;
+      wrap.innerHTML = cakeSVG({ toppings: state.toppings }); svg = $('svg', wrap); fitWrap(wrap);
+      say('decorar', STEPS[5].hint, 'm-wink'); renderToppings();
+      tray.addEventListener('pointerdown', onTrayDown); tray.addEventListener('pointermove', onTrayMove);
+      tray.addEventListener('pointerup', onTrayUp); tray.addEventListener('pointercancel', onTrayUp);
+      wrap.addEventListener('pointerdown', onCakeDown); window.addEventListener('resize', onResize);
+    },
+    exit(){
+      tray.removeEventListener('pointerdown', onTrayDown); tray.removeEventListener('pointermove', onTrayMove);
+      tray.removeEventListener('pointerup', onTrayUp); tray.removeEventListener('pointercancel', onTrayUp);
+      wrap.removeEventListener('pointerdown', onCakeDown); window.removeEventListener('resize', onResize);
+      ghost.classList.remove('on');
+    }
+  };
+})();
+
+/* =====================================================================
+   7. VELAS — encender y soplar
+   ===================================================================== */
+Screens.velas = (() => {
+  const wrap = $('#velas-wrap'), btn = $('#btn-blow'), label = $('#blow-label');
+  const HOLD = 1500;
+  let svg, blowing = false, raf = 0, t0 = 0, done = false, allLit = false;
+
+  function renderMeter(){ const n = state.lit.filter(Boolean).length; $('#velas-bar').style.width = (n/NUM_VELAS*100)+'%'; $('#velas-val').textContent = `${n}/${NUM_VELAS}`; }
+  function light(c){
+    const i = +c.dataset.i; if(state.lit[i]) return;
+    state.lit[i] = true; c.classList.add('lit'); Sound.light(); buzz(12); renderMeter();
+    const f = $('.flame', c); if(f){ const p = centerOf(f); sparkle(p.x, p.y, 6); }
+    const n = state.lit.filter(Boolean).length;
+    if(n < NUM_VELAS) say('velas', n === 1 ? 'Una encendida. ¡Sigue con las demás!' : `Faltan ${NUM_VELAS - n}.`, 'm-wink');
+    else { allLit = true; label.textContent = 'Soplar'; say('velas', 'Cierra los ojos, pide un deseo... y sopla fuerte manteniendo "Soplar".', 'm-cheer'); }
+  }
+  function onCandle(e){ const c = e.target.closest('.candle'); if(!c || allLit || done) return; light(c); }
+  function flames(){ return $$('.candle.lit .flame', svg); }
+  function loop(ts){
+    if(!blowing) return;
+    const p = Math.min(1, (ts - t0)/HOLD);
+    flames().forEach((f,i) => { const s = Math.max(0.05, 1 - p*(0.9 + 0.1*Math.sin(i))); f.style.transform = `scale(${(1 - p*0.3).toFixed(2)}, ${s.toFixed(2)}) rotate(${(p*14 + Math.sin(ts/40+i)*p*8).toFixed(1)}deg)`; });
+    if(p >= 1){ extinguish(); return; }
+    raf = requestAnimationFrame(loop);
+  }
+  function start(){
+    if(done) return;
+    if(!allLit){ const c = $$('.candle', svg).find(el => !state.lit[+el.dataset.i]); if(c) light(c); return; }
+    blowing = true; t0 = performance.now(); $$('.candle', svg).forEach(c => c.classList.add('blow')); raf = requestAnimationFrame(loop);
+  }
+  function stop(){
+    if(!blowing) return; blowing = false; cancelAnimationFrame(raf);
+    $$('.candle', svg).forEach(c => c.classList.remove('blow')); flames().forEach(f => f.style.transform = '');
+    if(!done) say('velas', 'Casi... sopla un poquito más seguido.', 'm-wow');
+  }
+  function extinguish(){
+    blowing = false; done = true; cancelAnimationFrame(raf); btn.disabled = true;
+    $$('.candle', svg).forEach(c => { c.classList.remove('blow'); c.classList.add('out'); $('.flame', c).style.transform = ''; });
+    Sound.puff(); buzz([30,40,60]); say('velas', '¡Deseo pedido! Veamos cómo quedó...', 'm-cheer');
+    state.stars[state.step] = 3;
+    setTimeout(() => { state.step++; show('final'); }, 1900);
+  }
+  holdButton(btn, { onStart: start, onEnd: stop });
+  const onResize = () => { if(current === 'velas') fitWrap(wrap); };
+  return {
+    enter(){
+      done = false; blowing = false; allLit = false; state.lit = Array(NUM_VELAS).fill(false); btn.disabled = false; label.textContent = 'Encender';
+      wrap.innerHTML = cakeSVG({ candles: NUM_VELAS, lit: state.lit }); svg = $('svg', wrap); fitWrap(wrap); renderMeter();
+      say('velas', NUM_VELAS === 1 ? 'Toca la vela para encenderla.' : 'Toca cada vela para encenderla.', 'm-wink');
+      wrap.addEventListener('pointerdown', onCandle); window.addEventListener('resize', onResize);
+    },
+    exit(){ cancelAnimationFrame(raf); wrap.removeEventListener('pointerdown', onCandle); window.removeEventListener('resize', onResize); }
+  };
+})();
+
+/* =====================================================================
+   FINAL — pastel, confeti y mensaje
+   ===================================================================== */
+Screens.final = {
+  enter(){
+    $('#final-cake').innerHTML = cakeSVG({ candles: NUM_VELAS, out: true });
+    $('#final-title').textContent = CONFIG.tituloFinal.replace('{nombre}', CONFIG.nombre);
+    const total = state.stars.reduce((a,b) => a + (b||0), 0);
+    $('#final-score').innerHTML = `${STAR.replace('<svg', '<svg style="fill:#F4A62A"')} Chef pastelera: ${total} de ${STEPS.length*3} estrellas`;
+    $('#final-msg').innerHTML = CONFIG.mensaje.map(p => `<p>${p.replace(/{nombre}/g, CONFIG.nombre)}</p>`).join('');
+    $('#final-firma').textContent = CONFIG.firma;
+    Sound.fanfare(); buzz([60,40,60,40,120]); confetti();
+    $('.screen.final').scrollTop = 0;
+  }
+};
+$('#btn-restart').addEventListener('click', () => { Sound.pop(); show('intro'); });
+
+function confetti(){
+  if(REDUCED) return;
+  const c = $('#confetti'), ctx = c.getContext('2d'), dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = window.innerWidth, H = window.innerHeight;
+  c.width = W*dpr; c.height = H*dpr; ctx.scale(dpr, dpr);
+  const colors = ['#EA5A95','#F27BAA','#F4A62A','#F9C74F','#A78BFA','#34D399','#60A5FA','#FFFFFF'];
+  const parts = Array.from({length: 160}, () => ({
+    x: Math.random()*W, y: -20 - Math.random()*H*0.6, w: 6 + Math.random()*6, h: 8 + Math.random()*8,
+    c: colors[(Math.random()*colors.length)|0], vy: 2 + Math.random()*3, vx: -1 + Math.random()*2,
+    r: Math.random()*Math.PI, vr: -0.12 + Math.random()*0.24, sw: Math.random()*Math.PI*2,
+  }));
+  const start = performance.now();
+  (function frame(ts){
+    ctx.clearRect(0, 0, W, H); let alive = false;
+    for(const p of parts){
+      p.y += p.vy; p.x += p.vx + Math.sin(ts/300 + p.sw)*0.8; p.r += p.vr; if(p.y < H + 20) alive = true;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h); ctx.restore();
+    }
+    if(alive && ts - start < 7000 && current === 'final') requestAnimationFrame(frame); else ctx.clearRect(0, 0, W, H);
+  })(start);
+}
+
+/* =====================================================================
+   Arranque
+   ===================================================================== */
+$$('.mascot-slot').forEach(el => { if(!el.id) el.innerHTML = mascotSVG(el.dataset.mood || 'm-wink'); });
+$$('.sq.face').forEach(el => { el.innerHTML = `<svg viewBox="22 14 76 76" class="mascot m-wink" aria-hidden="true">${mascotSVG('m-wink').replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</svg>`; });
+$('#mute').addEventListener('click', () => {
+  state.muted = !state.muted;
+  const b = $('#mute'); b.setAttribute('aria-pressed', String(state.muted)); b.setAttribute('aria-label', state.muted ? 'Activar sonidos' : 'Silenciar sonidos');
+  $('.ic-on', b).style.display = state.muted ? 'none' : ''; $('.ic-off', b).style.display = state.muted ? '' : 'none';
+  if(!state.muted) Sound.pop();
+});
+document.addEventListener('contextmenu', e => { if(e.target.closest('.stage, .tray, .glossy')) e.preventDefault(); });
+show('intro');
+</script>
+</body>
+</html>
